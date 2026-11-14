@@ -91,6 +91,8 @@ body.kids #top.solid{background:#0d1b3df7}
 body.kids .card{width:clamp(210px,44vw,340px);border-radius:16px}
 body.kids .card .lab{font-size:16px}
 body.kids #bFav{display:none}
+.kh{font-size:clamp(20px,2vw,26px);font-weight:900;margin:26px 0 14px}
+body.kids .grid .card{width:100%}
 .khero{margin:0 var(--pad) 24px;padding:24px 26px;border-radius:22px;background:linear-gradient(135deg,#ffd166,#f97316 60%,#ef476f);color:#1b1035;display:flex;align-items:center;gap:18px}
 .khero svg{width:84px;height:84px;border-radius:18px;flex:none}
 .khero h1{font-size:clamp(32px,5vw,54px);margin:0;font-weight:900}
@@ -246,6 +248,7 @@ video::cue{background:#000c;color:#fff;font-size:clamp(17px,2.6vw,30px)}
   .card.sq{width:160px;height:160px}
   .card.vid{width:210px;height:118px}
   body.kids .card{width:300px;height:169px}
+  body.kids .grid .card{width:auto;height:0;padding-top:56.25%}
   .grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));grid-gap:16px 10px}
   .grid.posters{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
   .grid.sqs{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
@@ -800,21 +803,31 @@ function pescaPage(){
 /* ================= kids profile ================= */
 function kidsHome(){
   var tok = viewTok;
-  view.innerHTML = '<div class="page" style="padding-left:0;padding-right:0">' +
-    '<div class="khero"><svg viewBox="0 0 100 100"><rect width="100" height="100" fill="url(#kg)"/><circle cx="50" cy="54" r="27" fill="#fff4cc"/><circle cx="40" cy="49" r="4.5" fill="#1b1035"/><circle cx="60" cy="49" r="4.5" fill="#1b1035"/><path d="M38 61q12 11 24 0" fill="none" stroke="#1b1035" stroke-width="4.5" stroke-linecap="round"/><path d="M18 20l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" fill="#fff"/><circle cx="82" cy="22" r="5" fill="#fff" opacity=".8"/><circle cx="84" cy="80" r="3.5" fill="#fff" opacity=".7"/></svg><div><h1>Olá! 👋</h1><p>O que vamos ver hoje?</p></div></div>' +
-    rowShell("kStar", "⭐ Os preferidos") + rowShell("kLive", "📺 Mais desenhos animados agora") + rowShell("kMickey", "🐭 Mickey e clássicos Disney") +
-    rowShell("kClassic", "🎬 Desenhos clássicos") + rowShell("kMore", "🍿 Mais desenhos clássicos") + "</div>";
+  view.innerHTML = '<div class="page">' + '<div class="khero" style="margin:0 0 24px"><svg viewBox="0 0 100 100"><rect width="100" height="100" fill="url(#kg)"/><circle cx="50" cy="54" r="27" fill="#fff4cc"/><circle cx="40" cy="49" r="4.5" fill="#1b1035"/><circle cx="60" cy="49" r="4.5" fill="#1b1035"/><path d="M38 61q12 11 24 0" fill="none" stroke="#1b1035" stroke-width="4.5" stroke-linecap="round"/><path d="M18 20l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" fill="#fff"/><circle cx="82" cy="22" r="5" fill="#fff" opacity=".8"/><circle cx="84" cy="80" r="3.5" fill="#fff" opacity=".7"/></svg><div><h1>Olá! 👋</h1><p>O que vamos ver hoje?</p></div></div>' +
+    '<h2 class="kh">📺 Canais de desenhos</h2><div class="grid" id="kgL"></div><div class="empty" id="keL"><div class="spin"></div>A carregar…</div>' +
+    '<h2 class="kh">🎬 Desenhos clássicos</h2><div class="grid" id="kgC"></div><div class="empty" id="keC"><div class="spin"></div>A carregar…</div></div>';
+  // all kids channels in one grid, favourites first (same layout as the adult pages)
   kidsAll().then(function(d){
-    var star = d.items.filter(function(it){ return KIDS_STAR.test(it.name); });
-    var rest = d.items.filter(function(it){ return !KIDS_STAR.test(it.name); });
-    fillRow("kStar", star, tok); fillRow("kLive", rest, tok); probe(d.items);
-  }).catch(function(){ fillRow("kStar", [], tok); fillRow("kLive", [], tok); });
-  // Mickey's first cartoons (1928) are public domain, on the Internet Archive
-  iaSearch("mickey OR steamboat", 1, "animationandcartoons OR classic_cartoons").then(function(l){
-    fillRow("kMickey", l.filter(function(it){ return /mickey|steamboat|plane crazy|gallopin/i.test(it.name); }).map(function(it){ it.kid = 1; return it; }), tok);
-  }).catch(function(){ fillRow("kMickey", [], tok); });
-  iaSearch("", 1, "classic_cartoons").then(function(l){ fillRow("kClassic", l.slice(0, 30), tok); fillRow("kMore", shuffle(l.slice(30)), tok); })
-    .catch(function(){ fillRow("kClassic", [], tok); fillRow("kMore", [], tok); });
+    if(tok !== viewTok) return;
+    var l = d.items, id = register(l);
+    $("kgL").innerHTML = l.map(function(it, i){ return card(it, id, i); }).join("");
+    $("keL").style.display = l.length ? "none" : "block"; $("keL").textContent = "Nenhum canal de desenhos a dar agora.";
+    probe(l);
+  }).catch(function(){ if(tok === viewTok) $("keL").textContent = "Não consegui carregar os canais."; });
+  // classic cartoons on demand, Mickey (1928) first
+  Promise.all([
+    iaSearch("mickey OR steamboat", 1, "animationandcartoons OR classic_cartoons").then(function(l){
+      return l.filter(function(it){ return /mickey|steamboat|plane crazy|gallopin/i.test(it.name); });
+    }).catch(function(){ return []; }),
+    iaSearch("", 1, "classic_cartoons").catch(function(){ return []; })
+  ]).then(function(r){
+    if(tok !== viewTok) return;
+    var seen = {}, l = [];
+    r[0].concat(r[1]).forEach(function(it){ if(!seen[it.id]){ seen[it.id] = 1; it.kid = 1; l.push(it); } });
+    var id = register(l);
+    $("kgC").innerHTML = l.map(function(it, i){ return card(it, id, i); }).join("");
+    $("keC").style.display = l.length ? "none" : "block"; $("keC").textContent = "Não consegui carregar os desenhos clássicos.";
+  });
 }
 
 /* ================= light mode on TVs (no heavy blur / shadows / animations) ================= */
