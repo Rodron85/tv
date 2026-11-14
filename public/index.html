@@ -577,7 +577,7 @@ function liveRadios(){ return radios().then(function(l){ return l.filter(showabl
 function radioPage(){
   var tok = viewTok;
   view.innerHTML = '<div class="page"><p class="sub" id="rsub">Rádios portuguesas em direto</p>' +
-    '<input class="sinput nav" id="rq" type="search" placeholder="Procurar rádio (ex.: Antena 1, Comercial, M80)…" autocomplete="off">' +
+    '<input class="sinput" id="rq" type="search" style="display:none" placeholder="Procurar rádio (ex.: Antena 1, Comercial, M80)…" autocomplete="off">' +
     '<div class="grid sqs" id="rgrid"></div><div class="empty" id="rempty"><div class="spin"></div>A carregar rádios…</div></div>' + foot();
   var all = [];
   function draw(){
@@ -966,7 +966,7 @@ function category(key, opts){
   var tok = viewTok, s = SRC[key] || KIDS_SRC, classic = key === "movies" && opts === "classic";
   view.innerHTML = '<div class="page"><p class="sub" id="csub">' + esc(s.sub) + "</p>" +
     (key === "movies" ? '<div class="chips"><button class="chip nav' + (classic ? "" : " on") + '" id="chLive">Canais 24h</button><button class="chip nav' + (classic ? " on" : "") + '" id="chClassic">Clássicos a pedido</button></div>' : "") +
-    '<input class="sinput nav" id="cq" type="search" placeholder="Procurar em ' + esc(s.title) + '…" autocomplete="off">' +
+    '<input class="sinput" id="cq" type="search" style="display:none" placeholder="Procurar em ' + esc(s.title) + '…" autocomplete="off">' +
     '<div class="grid' + (classic ? " posters" : "") + '" id="cgrid"></div><div class="empty" id="cempty"><div class="spin"></div>A carregar…</div>' +
     '<button class="b ghost nav more" id="cmore" style="display:none">Mostrar mais</button></div>' + foot();
   if(key === "movies"){
