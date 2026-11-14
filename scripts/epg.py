@@ -5,8 +5,10 @@ import gzip, io, json, lzma, re, sys, time, unicodedata, urllib.request
 import xml.etree.ElementTree as ET
 
 BASE = "https://raw.githubusercontent.com/LITUATUI/M3UPT/main/EPG/"
-SOURCES = [("epg-m3upt.xml.xz", "pt"), ("epg-freeview-uk.xml.xz", "uk")]
-BEFORE, AFTER, MAXP = 3 * 3600, 8 * 3600, 6
+SOURCES = [("epg-m3upt.xml.xz", "pt"), ("epg-freeview-uk.xml.xz", "uk"),
+           ("https://i.mjh.nz/PlutoTV/gb.xml.gz", "pl"), ("https://i.mjh.nz/PlutoTV/us.xml.gz", "pl")]
+KIDS = re.compile(r"(?i)kid|junior|toon|nick|cartoon|anima|baby|bean|peppa|teletubb|sponge|lego|garfield|smurf|sonic|oggy|tom and|transformers|turtles|rugrats|dora|avatar|arnold|pok[eé]mon|barney|thomas|caillou|power rangers|family|pocket\.watch|ryan|blippi|moonbug|baby shark|ninja")
+BEFORE, AFTER, MAXP = 3 * 3600, 7 * 3600, 30
 
 def key(n):
     n = unicodedata.normalize("NFD", (n or "").lower())
@@ -23,6 +25,9 @@ def ts(s):
     return calendar.timegm(t) - off
 
 def fetch(name):
+    if name.startswith("http"):
+        req = urllib.request.Request(name, headers={"User-Agent": "Mozilla/5.0 ForretaTV-EPG"})
+        return urllib.request.urlopen(req, timeout=120).read()
     if len(sys.argv) > 1:                       # local folder for testing
         return open(sys.argv[1] + "/" + name, "rb").read()
     req = urllib.request.Request(BASE + name, headers={"User-Agent": "ForretaTV-EPG"})
@@ -34,7 +39,9 @@ def add_alias(a, cid):
     if a and a not in alias: alias[a] = cid
 
 for fname, tag in SOURCES:
-    raw = fetch(fname)
+    try: raw = fetch(fname)
+    except Exception as e:
+        print("falhou", fname, e); continue
     data = lzma.decompress(raw) if fname.endswith(".xz") else gzip.decompress(raw)
     names = {}
     for ev, el in ET.iterparse(io.BytesIO(data)):
@@ -47,21 +54,24 @@ for fname, tag in SOURCES:
             cid = el.get("channel")
             if tag == "pt" and not cid.lower().split("@")[0].endswith(".pt"):
                 el.clear(); continue
+            if tag == "pl" and not KIDS.search(" ".join(names.get(cid, []))):
+                el.clear(); continue
             a, b = ts(el.get("start")), ts(el.get("stop") or el.get("start"))
             if b > now - BEFORE and a < now + AFTER:
                 t = el.findtext("title") or ""
                 d = (el.findtext("desc") or "").strip()
-                k = cid.lower().split("@")[0] if tag == "pt" else "uk:" + cid
+                k = cid.lower().split("@")[0] if tag == "pt" else tag + ":" + cid
                 p = [a // 60, b // 60, t.strip()]
                 if d: p.append(d[:160])
                 chans.setdefault(k, []).append(p)
             el.clear()
     order = sorted(names.items(), key=lambda x: (0 if re.search(r"lon", x[0] + " ".join(x[1]), re.I) else 1, x[0]))
     for cid, dn in order:
-        k = cid.lower().split("@")[0] if tag == "pt" else "uk:" + cid
+        k = cid.lower().split("@")[0] if tag == "pt" else tag + ":" + cid
         if k not in chans: continue
         for n in dn:
             add_alias(key(n), k)
+            if tag == "pl" and not n.lower().startswith("pluto"): add_alias(key("Pluto TV " + n), k)
             m = re.match(r"(?i)u\s*&\s*(.+)", n)             # U&Dave -> Dave
             if m: add_alias(key(m.group(1)), k)
             m = re.match(r"(?i)(bbc (one|two))\b", n)        # BBC ONE Lon -> BBC One
