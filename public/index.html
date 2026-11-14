@@ -342,7 +342,7 @@ var IPTV = "https://iptv-org.github.io/iptv/";
 var FREETV = "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8";
 var SRC = {
   pt:     {title:"TV Portuguesa", sub:"Canais portugueses em direto",
-           url:"https://raw.githubusercontent.com/LITUATUI/M3UPT/main/M3U/M3UPT.m3u|" + FREETV + "#group=portugal|" + IPTV + "countries/pt.m3u"},
+           url:"https://raw.githubusercontent.com/LITUATUI/M3UPT/main/M3U/M3UPT.m3u#group=tv#pt|" + FREETV + "#group=portugal|" + IPTV + "countries/pt.m3u"},
   uk:     {title:"TV Inglesa",    sub:"Canais do Reino Unido em direto", url:FREETV + "#group=uk|united kingdom|" + IPTV + "countries/uk.m3u"},
   series: {title:"Séries",        sub:"Canais que dão séries 24 horas por dia", url:IPTV+"categories/series.m3u"},
   movies: {title:"Filmes",        sub:"Canais de filmes 24h e clássicos para ver quando quiseres", url:IPTV+"categories/movies.m3u"}
@@ -353,8 +353,11 @@ var HTTPS = location.protocol === "https:";
 var BLOCK = /(?:^|[^a-zà-ÿ])man[aá](?![a-zà-ÿ])|igreja|church|gospel|evang|kuriakos|relig|cat[oó]lic|f[aá]tima|can[cç][aã]o nova|r[aá]dio maria|ewtn|daystar|tbn\b|god ?tv|jesus|b[ií]blia|bible|cristo|christ(?!mas)|islam|qur.?an|madani|ahlulbayt|peace tv|iqra|hidayat|adventist|pentecost|universal do reino|iurd|aleluia|hallelujah|worship|faith|ora[cç][aã]o|miss[aã]o|ministr|pastor|apostol/i;
 // UK tab: not Indian / South Asian or other foreign-language channels
 var NOT_UK = /(?:^|[^a-z])(zee\w*|sony\w*|colou?rs|star (?:plus|bharat|gold|utsav|life|jalsha)|b4u\w*|aaj tak|ptc\w*|sikh\w*|akaal|sangat|khalsa|punjab\w*|bollywood|desi|hindi|tamil\w*|telugu|malayalam|kannada|bengali|bangla\w*|gujarat\w*|marathi|urdu|ary\w*|geo|hum|sanskar|aastha|venus|mh ?one|9x\w*|zing|isai|tv9|ndtv|india\w*|bharat\w*|sunrise|lyca\w*|kalaignar|sun (?:tv|music)|vijay|jaya|asianet|channel s|ntv|ekushey|atn|ibc|deepam|vaanavil|gtv|dd (?:national|news|india)|republic|times now|wion|mastiii|filmy|pakistan\w*|ptv|dunya|samaa|bol|sangeet|kesari|sanjha|brit ?asia|mati|nepal\w*|sri lanka\w*|sinhala|b4u|bolly\w*|masala|filmi\w*|hindustan\w*|desi\w*|shemaroo|manoranjan|dhamaka|balle balle|bhakti|bhojpuri|tollywood|kollywood)(?![a-z])/i;
-var KIDS_STAR = /mickey|minnie|donald|pateta|goofy|disney|steamboat|mr\.? ?bean|peppa|pocoyo|masha|oggy|zig ?(&|and|e|y) ?sharko|shaun the sheep|pingu|teletubbies|garfield|smurf|pitufo|looney|tom (and|&|e|y) jerry|moonbug|cocomelon|baby ?shark|pinkfong|blippi/i;
-var KIDS = /mickey|minnie|donald|pateta|goofy|disney|steamboat|kids|kid\b|animation|animad|cartoon|children|infantil|desenhos|dibujos|junior|baby|toon|anime|pequenos|panda|mr\.? ?bean|peppa|pocoyo|pingu|teletubbies|masha|caillou|cocomelon|pinkfong|baby ?shark|blippi|\bryan\b|oggy|zig ?(&|and|e|y) ?sharko|garfield|smurf|pitufo|strumpf|looney|tom (and|&|e|y) jerry|scooby|\bsonic\b|pok[eé]mon|ninjago|\blego\b|power rangers|transformers|inspector gadget|danger mouse|shaun the sheep|fireman sam|bob the builder|thomas (and|&) friends|noddy|paw patrol|\bdora\b|\bbarbie\b|hot wheels|my little pony|polly pocket|super ?wings|robocar|bluey|\bclan\b|zigzag|zig zag|canal panda|nick ?jr|nickelodeon|boomerang|baby ?tv|duck ?tv|kidoodle|toon ?goggles|happy kids|kartoon|moonbug|wildbrain|cbeebies|cbbc|pop ?(kids|max|up)?$|tiny pop/i;
+var PAID = /(^|[^a-z])(sport ?tv[0-9+ ]*|dazn|eurosport|axn|star (channel|crime|movies|comedy|life|plus)|disney (channel|jr|junior|xd)|veronica|cartoon ?network|cartoonito|boomerang|nickelodeon(?! pluto)|nick ?jr\.?(?! (club|pluto))|nicktoons|nickonline|teennick|nick\/|sky (sports|cinema|atlantic|one|showcase|max|comedy|crime|witness|arts|kids|history|documentaries|nature)|bt sport|tnt sports|hbo|cinemax|showtime|starz|amc|fox (sports|life|movies|crime)|discovery (kids|channel|history|science|turbo)|national geographic|nat ?geo|animal planet|canal ?\+|movistar|benfica tv|sporting tv|eleven sports|tvcine|sic (mulher|radical|k|caras)|mutv|filmbox|cinecanal|claro|telecine|espn|bein|sportklub|arena sport|viaplay|history channel|crime ?\+ ?investigation|mtv|comedy central|paramount network|dreamworks channel|universal tv|syfy|e! entertainment|cnbc|golf channel|tennis channel|red button|tnt( |$)|trailers uk)([^a-z]|$)/i;
+var FOREIGN_FEED = /\((germany|sweden|poland|hungary|romania|netherlands|bulgaria|russia|israel|t[uü]rkiye|turkey|france|italy|greece|denmark|norway|finland|czech|asia|india|pakistan)\)|(^|[^a-z])(asia|taiwan|thailand|cee|adria|hungary|romania|poland)([^a-z]|$)| (dk|no|se|fi|fr|it|de)$|juniorklubben|tecknat|tecknade|tegnefilm|ungdomsserier|svamp|en francais|version original|tortues|polsat|minika|mbc ?3|aqlvoy|iunior/i;
+var KIDS_NO = /south park|comedy central|family guy|american dad|rick and morty|futurama|simpson|beavis|adult swim|toonami|married with children|anime|naruto|one piece|crunchyroll|hidive|aniplus|animax|retrocrush|tokusato|yu-?gi-?oh|dreiko|geek|e-?sports|teen|placid|botflix|lamil|giktv|energeek|shin-?chan|trailers|horror|terror|ghost|haunt/i;
+var KIDS_STAR = /mickey|minnie|steamboat|mr\.? ?bean|peppa|pocoyo|\bmasha\b|oggy|zig ?(&|and|e|y) ?sharko|shaun the sheep|pingu|teletubbies|garfield|smurf|pitufo|looney|tom (and|&|e|y) jerry|moonbug|cocomelon|baby ?shark|pinkfong|blippi/i;
+var KIDS = /mickey|minnie|steamboat|kids|kid\b|animation|animad|cartoon|children|infantil|desenhos|dibujos|junior|baby|toon|anime|pequenos|panda|mr\.? ?bean|peppa|pocoyo|pingu|teletubbies|\bmasha\b|caillou|cocomelon|pinkfong|baby ?shark|blippi|\bryan\b|oggy|zig ?(&|and|e|y) ?sharko|garfield|smurf|pitufo|strumpf|looney|tom (and|&|e|y) jerry|scooby|\bsonic\b|pok[eé]mon|ninjago|\blego\b|power rangers|transformers|inspector gadget|danger mouse|shaun the sheep|fireman sam|bob the builder|thomas (and|&) friends|noddy|paw patrol|\bdora\b|\bbarbie\b|hot wheels|my little pony|polly pocket|super ?wings|robocar|bluey|\bclan\b|zigzag|zig zag|canal panda|nick ?jr|nickelodeon|boomerang|baby ?tv|duck ?tv|kidoodle|toon ?goggles|happy kids|kartoon|moonbug|wildbrain|cbeebies|cbbc|pop ?(kids|max|up)?$|tiny pop/i;
 function isKids(it){ return KIDS.test(it.group || "") || KIDS.test(it.name || ""); }
 function blocked(it){ return BLOCK.test(it.name || "") || BLOCK.test(it.group || ""); }
 // optional proxy (Cloudflare Worker) for channels whose servers block other websites
@@ -366,8 +369,9 @@ function proxyBase(){
   if(own) return own.replace(/\/+$/, "");
   return autoProxy && autoProxy.ok ? DEFAULT_PROXY : "";
 }
-function checkAutoProxy(){
-  if(autoProxy && now() - autoProxy.t < 6 * 3600e3) return Promise.resolve();
+var proxyReady = null;
+function checkAutoProxy(force){
+  if(!force && autoProxy && autoProxy.ok && now() - autoProxy.t < 6 * 3600e3) return Promise.resolve();
   var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
   var to = setTimeout(function(){ if(ctl) ctl.abort(); }, 5000);
   return fetch(DEFAULT_PROXY + "/", ctl ? {signal:ctl.signal, cache:"no-store"} : {cache:"no-store"})
@@ -424,7 +428,10 @@ function addRecent(it){
 }
 
 /* ================= M3U ================= */
-function cleanName(n){ return n.replace(/\[[^\]]*\]/g, "").replace(/\(\d{3,4}[pi]\)/gi, "").replace(/\s{2,}/g, " ").trim(); }
+function chanKey(n){
+  return (n || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\b(hd|sd|uhd|fhd)\b/g, "").replace(/[^a-z0-9]/g, "");
+}
+function cleanName(n){ return n.replace(/[\u2460-\u24FF]/g, "").replace(/\[[^\]]*\]/g, "").replace(/\(\d{3,4}[pi]\)/gi, "").replace(/\s{2,}/g, " ").trim(); }
 function parseM3U(text){
   var lines = text.split(/\r?\n/), out = [], seen = {}, cur = null;
   for(var i = 0; i < lines.length; i++){
@@ -433,18 +440,20 @@ function parseM3U(text){
     if(l.indexOf("#EXTINF") === 0){
       var attr = function(n){ var m = l.match(new RegExp(n + '="([^"]*)"', "i")); return m ? m[1] : ""; };
       var st = l.replace(/\s[\w-]+="[^"]*"/g, ""), c = st.indexOf(",");
-      cur = {logo:attr("tvg-logo"), group:attr("group-title"), name:cleanName(c >= 0 ? st.slice(c + 1) : "") || attr("tvg-name")};
+      cur = {logo:attr("tvg-logo"), group:attr("group-title"), tid:attr("tvg-id"), name:cleanName(c >= 0 ? st.slice(c + 1) : "") || attr("tvg-name")};
     } else if(l.charAt(0) === "#"){
       if(cur){
-        var m = l.match(/http-referr?er=(.+)$/i); if(m) cur.ref = m[1].trim();
-        m = l.match(/http-user-agent=(.+)$/i); if(m) cur.ua = m[1].trim();
+        var unq = function(v){ return v.trim().replace(/^["']|["']$/g, ""); };
+        var m = l.match(/http-referr?er=(.+)$/i); if(m) cur.ref = unq(m[1]);
+        m = l.match(/http-origin=(.+)$/i); if(m && !cur.ref) cur.ref = unq(m[1]) + "/";
+        m = l.match(/http-user-agent=(.+)$/i); if(m) cur.ua = unq(m[1]);
       }
       continue;
     }
     else if(cur){
       cur.url = l;
       if(!cur.name) cur.name = l.split("/").pop();
-      var k = cur.name.toLowerCase().replace(/[^a-z0-9à-ÿ]/g, "");
+      var k = chanKey(cur.name);
       if(/^https?:\/\//i.test(l) && !seen[k]){ seen[k] = 1; cur.type = "live"; out.push(cur); }
       cur = null;
     }
@@ -455,20 +464,22 @@ function parseM3U(text){
 /* ================= data loading (auto-updates daily) ================= */
 function loadList(key, url, force){
   if(!force && mem[key] && mem[key].url === url && now() - mem[key].t < DAY) return Promise.resolve(mem[key]);
-  var cached = sget("l6:"+key, null);
+  var cached = sget("l8:"+key, null);
   if(!force && cached && cached.url === url && now() - cached.t < DAY){ mem[key] = cached; return Promise.resolve(cached); }
   var parts = url.split(/\|(?=https?:\/\/)/);
   return Promise.all(parts.map(function(u){
+      var ptOnly = /#pt$/.test(u); u = u.replace(/#pt$/, "");
       var h = u.split("#group="), only = h[1] ? new RegExp("^(" + h[1] + ")$", "i") : null;
       return fetch(h[0], {cache:"no-store"}).then(function(r){ if(!r.ok) throw new Error(r.status); return r.text(); })
-        .then(function(t){ return {t:t, only:only, org:h[0].indexOf("iptv-org") >= 0}; }).catch(function(){ return null; });
+        .then(function(t){ return {t:t, only:only, pt:ptOnly, org:h[0].indexOf("iptv-org") >= 0}; }).catch(function(){ return null; });
     })).then(function(res){
       if(res.every(function(x){ return x === null; })) throw new Error("offline");
       var items = [], seen = {};
       res.forEach(function(x){ if(x) parseM3U(x.t).forEach(function(it){
         if(x.only && !x.only.test((it.group || "").trim())) return;
+        if(x.pt && !/\.pt(@|$)/i.test(it.tid || "") && !/portugal|portugu[eê]s|\bPT\b/i.test(it.name)) return;
         if(x.org) it.org = 1;
-        var k = it.name.toLowerCase().replace(/[^a-z0-9à-ÿ]/g, "");
+        var k = chanKey(it.name);
         if(!seen[k]){ seen[k] = 1; items.push(it); }
       }); });
       if(key === "my") return items;              // your own list is left as it is
@@ -476,12 +487,13 @@ function loadList(key, url, force){
       return langSet(key === "uk" ? ["eng"] : ["por", "eng", "spa"]).then(function(ok){
         return items.filter(function(it){
           if(NOT_UK.test(it.name) || NOT_UK.test(it.group || "")) return false;
+          if(PAID.test(it.name) || FOREIGN_FEED.test(it.name)) return false;
           return !it.org || !ok.size || ok.has(it.url) || KIDS_STAR.test(it.name);
         });
       });
     }).then(function(items){
       var d = {t:now(), url:url, items:items};
-      mem[key] = d; sset("l6:"+key, d); return d;
+      mem[key] = d; sset("l8:"+key, d); return d;
     }).catch(function(e){ if(cached){ cached.stale = true; mem[key] = cached; return cached; } throw e; });
 }
 function live(key){ return loadList(key, SRC[key].url).then(function(d){ return d.items.filter(showable); }); }
@@ -683,11 +695,12 @@ function kidsAll(){
   return Promise.all(dedicated.concat(others)).then(function(ls){
     var seen = {}, r = [];
     ls.forEach(function(l){ l.forEach(function(it){
-      var k = it.name.toLowerCase().replace(/[^a-z0-9à-ÿ]/g, "");
+      if(KIDS_NO.test(it.name) || KIDS_NO.test(it.group || "")) return;
+      var k = chanKey(it.name);
       if(!seen[k] && !seen[it.url]){ seen[k] = 1; seen[it.url] = 1; r.push(it); }
     }); });
     // well-known favourites first (Mr Bean, Peppa, Pocoyo…)
-    var FAV = /mickey|minnie|donald|pateta|goofy|disney|steamboat|mr\.? ?bean|peppa|pocoyo|masha|oggy|zig|shaun|pingu|garfield|smurf|pitufo|looney|tom (and|&|e|y) jerry|sonic|pok[eé]mon|lego|ninjago|teletubbies|panda|zigzag|clan/i;
+    var FAV = /mickey|minnie|steamboat|mr\.? ?bean|peppa|pocoyo|\bmasha\b|oggy|zig|shaun|pingu|garfield|smurf|pitufo|looney|tom (and|&|e|y) jerry|sonic|pok[eé]mon|lego|ninjago|teletubbies|panda|zigzag|clan/i;
     r.sort(function(a, b){ return (FAV.test(b.name) ? 1 : 0) - (FAV.test(a.name) ? 1 : 0); });
     return {t:now(), items:r};
   });
@@ -737,8 +750,14 @@ function fishAll(){ return Promise.all(["pt", "uk", "es"].map(fishCountry)).then
 function pescaPage(){
   var tok = viewTok;
   if(!proxyBase()){
-    view.innerHTML = '<div class="page"><div class="box"><p>A secção de Pesca vai buscar os vídeos novos ao YouTube através da tua <b>ponte</b> do Cloudflare.</p>' +
-      '<p>Liga a ponte em <b>Opções → Ponte para canais bloqueados</b> e volta aqui.</p><div class="r"><button class="b play nav" data-go="opcoes">Ir para Opções</button></div></div></div>' + foot();
+    view.innerHTML = '<div class="page"><div class="empty"><div class="spin"></div>A ligar à ponte…</div></div>';
+    checkAutoProxy(true).then(function(){
+      if(tok !== viewTok) return;
+      if(proxyBase()) return pescaPage();
+      view.innerHTML = '<div class="page"><div class="box"><p>A Pesca vai buscar os vídeos ao YouTube através da tua <b>ponte</b> (forreta-ponte), mas a ponte não respondeu como devia.</p>' +
+        '<p>Abre <b>forreta-ponte.ronnieandrodrigues.workers.dev</b> no browser: tem de aparecer <b>“Forreta TV ponte OK”</b>. Se aparecer “Hello World”, falta colar o código da ponte no Worker e carregar em Deploy.</p>' +
+        '<div class="r"><button class="b play nav" data-go="pesca">Tentar outra vez</button><button class="b ghost nav" data-go="opcoes">Opções</button></div></div></div>' + foot();
+    });
     return;
   }
   view.innerHTML = '<div class="page" style="padding-left:0;padding-right:0"><p class="sub" style="margin-left:var(--pad)">Vídeos de pesca de Portugal, Reino Unido e Espanha. Atualizam-se sozinhos.</p>' +
@@ -801,7 +820,8 @@ function enterProfile(p){
   if(sget("introSound", true)) introSound();
   var done = function(){ it.classList.remove("show", "play"); it.onclick = null; };
   it.onclick = done; setTimeout(done, 2700);
-  go(p === "kids" ? "khome" : "home");
+  var target = p === "kids" ? "khome" : "home";
+  (proxyReady || Promise.resolve()).then(function(){ go(target); }, function(){ go(target); });
 }
 // original cinematic intro sound: deep impact + whoosh + rising chord (made with the browser, no files)
 function introSound(){
@@ -1014,7 +1034,7 @@ function m3uPage(){
     f.text().then(function(txt){ var d = {t:now(), items:parseM3U(txt)}; mem.myfile = d; sset("list:myfile", d); sset("myurl", ""); $("myUrl").value = ""; showMy(d); });
   };
   $("myFileLbl").onkeydown = function(e){ if(e.key === "Enter") $("myFile").click(); };
-  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l6:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
+  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l8:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
 }
 
 function opcoesPage(){
@@ -1425,7 +1445,7 @@ window.ftvBack = function(){
   return false;
 };
 showProfiles();
-checkAutoProxy();
+proxyReady = checkAutoProxy();
 setTimeout(dailyRefresh, 5000);
 setInterval(dailyRefresh, 6 * 3600e3);
 })();
