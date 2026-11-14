@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Forreta TV</string>
+    <!-- the address of your Forreta TV (change it here if it ever moves) -->
+    <string name="app_url">https://wild-field-f05c.ronnieandrodrigues.workers.dev/</string>
+</resources>

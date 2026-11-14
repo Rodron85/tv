@@ -1,0 +1,8 @@
+// Forreta TV – the web app is served by the Cloudflare Worker "wild-field-f05c"
+{
+  "name": "wild-field-f05c",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./public"
+  }
+}
