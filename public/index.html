@@ -150,6 +150,20 @@ main{position:relative;z-index:2}
 .card .ini{font-weight:900;font-size:clamp(22px,2.4vw,34px);color:#fff;opacity:.9;letter-spacing:-1px}
 .card .lab{position:absolute;left:0;right:0;bottom:0;padding:22px 9px 7px;background:linear-gradient(0deg,#000d,#0000);font-weight:700;font-size:13px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card .lab small{display:block;color:#c9ced6;font-weight:500;font-size:11px}
+.card .lab small.ep{color:#ffd0d1;overflow:hidden;text-overflow:ellipsis}
+.pepg{font-size:13px;color:#dfe3e8;margin-top:4px;line-height:1.35}
+.pepg .bar,.gr .bar{display:block;height:3px;background:#ffffff30;border-radius:2px;margin:4px 0;max-width:280px;overflow:hidden}
+.pepg .bar b,.gr .bar b{display:block;height:100%;background:var(--red)}
+.pepg em,.gr em{font-style:normal;color:var(--muted)}
+.glist{display:flex;flex-direction:column;gap:8px}
+.gr{display:flex;align-items:center;gap:14px;width:100%;border:0;border-radius:10px;background:#1b1d22;color:var(--text);padding:10px 14px;text-align:left;font:inherit}
+.gr:focus-visible,.gr:hover{background:#2a2d34;outline:2px solid #fff}
+.gr .gl{flex:0 0 auto;width:86px;height:48px;border-radius:7px;display:flex;align-items:center;justify-content:center;overflow:hidden;font-weight:900}
+.gr .gl img{max-width:84%;max-height:80%}
+.gr .gi{flex:1;min-width:0}
+.gr .gi b{display:block;font-size:15px}
+.gr .gi span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.gr .gi .nx{color:var(--muted);font-size:13px}
 .card .live{position:absolute;top:7px;left:7px;background:var(--red);color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:4px;letter-spacing:.6px}
 .card .star{position:absolute;top:5px;right:8px;color:var(--yellow);text-shadow:0 1px 4px #000}
 .card .rank{position:absolute;left:-4px;bottom:-14px;font-size:90px;font-weight:900;color:#000;-webkit-text-stroke:2px #fff8;line-height:1}
@@ -300,6 +314,7 @@ video::cue{background:#000c;color:#fff;font-size:clamp(17px,2.6vw,30px)}
     <button class="nav" data-go="kids">Desenhos</button>
     <button class="nav" data-go="classic">Clássicos</button>
     <button class="nav" data-go="pesca">🎣 Pesca</button>
+    <button class="nav" data-go="guia">📺 Guia</button>
   </nav>
 </header>
 <nav id="bnav">
@@ -337,7 +352,7 @@ video::cue{background:#000c;color:#fff;font-size:clamp(17px,2.6vw,30px)}
   <div class="pmsg" id="pmsg"></div>
   <div class="pt">
     <button class="pbtn nav" id="bBack" title="Voltar">←</button>
-    <div class="ptitle"><b id="pname"></b><small id="psub"></small></div>
+    <div class="ptitle"><b id="pname"></b><small id="psub"></small><div class="pepg" id="pepg"></div></div>
     <button class="pbtn nav" id="bAir" title="Enviar para a Apple TV" style="display:none"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"/><path d="m12 15 5 6H7z" fill="currentColor"/></svg></button>
     <button class="pbtn nav" id="bFull" title="Ecrã inteiro">⛶</button>
   </div>
@@ -675,12 +690,111 @@ function card(it, lid, i, opt){
     '<div class="art">' + img + '<span class="ini"' + (it.logo ? ' style="display:none"' : "") + ">" + esc(initials(it.name)) + "</span></div>" +
     (it.type === "live" ? '<span class="live">AO VIVO</span>' : "") + (sq ? '<span class="radio">RÁDIO</span>' : "") +
     (isFav(it) ? '<span class="star">★</span>' : "") +
-    '<div class="lab">' + esc(it.name) + (it.year ? "<small>" + esc(it.year) + "</small>" : vid ? "<small>" + esc(it.group) + (it.date ? " · " + ago(it.date) : "") + "</small>" : "") + "</div></button>";
+    '<div class="lab">' + esc(it.name) + (it.type === "live" ? epCard(it) : "") + (it.year ? "<small>" + esc(it.year) + "</small>" : vid ? "<small>" + esc(it.group) + (it.date ? " · " + ago(it.date) : "") + "</small>" : "") + "</div></button>";
 }
 document.addEventListener("click", function(e){
-  var c = e.target.closest(".card"); if(c){ play(reg[c.dataset.l], +c.dataset.i); return; }
+  var c = e.target.closest(".card,.gr"); if(c){ play(reg[c.dataset.l], +c.dataset.i); return; }
   var g = e.target.closest("[data-go]"); if(g){ go(g.dataset.go); }
 });
+
+/* ================= TV guide (now / next) ================= */
+var EPG = null, epgMemo = {};
+function loadEpg(){
+  return fetch("epg.json?h=" + Math.floor(Date.now() / 18e5)).then(function(r){ return r.json(); }).then(function(d){
+    EPG = d; epgMemo = {}; refreshEp();
+  }).catch(function(){});
+}
+function epgOf(it){
+  if(!EPG || !it || it.type !== "live") return null;
+  var k = keyOf(it); if(k in epgMemo) return epgMemo[k];
+  var t = (it.tid || "").toLowerCase().split("@")[0], r = EPG.c[t] || null;
+  if(!r){
+    var w = (it.name || "").replace(/\(.*?\)/g, "").split(/\s+/).filter(Boolean);
+    for(var n = w.length; n >= 1 && !r; n--){
+      var ck = chanKey(w.slice(0, n).join(" "));
+      if(ck.length < 3 || (n === 1 && w.length > 1 && ck.length < 4)) continue;
+      if(EPG.a[ck]) r = EPG.c[EPG.a[ck]];
+    }
+  }
+  return (epgMemo[k] = r);
+}
+function nowNext(it){
+  var l = epgOf(it); if(!l) return null;
+  var m = Date.now() / 6e4;
+  for(var i = 0; i < l.length; i++){
+    if(l[i][1] <= m) continue;
+    if(l[i][0] <= m) return {now:l[i], next:l[i + 1]};
+    return {now:null, next:l[i]};
+  }
+  return null;
+}
+function hm(min){ return new Date(min * 6e4).toLocaleTimeString("pt-PT", {hour:"2-digit", minute:"2-digit"}); }
+function pct(p){ return Math.max(0, Math.min(100, (Date.now() / 6e4 - p[0]) / Math.max(1, p[1] - p[0]) * 100)); }
+function epCard(it){
+  var x = nowNext(it); if(!x) return "";
+  return x.now ? '<small class="ep">▶ ' + esc(x.now[2]) + "</small>" : '<small class="ep">' + hm(x.next[0]) + " " + esc(x.next[2]) + "</small>";
+}
+function refreshEp(){
+  if(!EPG) return;
+  [].forEach.call(document.querySelectorAll(".card[data-l]"), function(c){
+    var l = reg[c.dataset.l], it = l && l[+c.dataset.i]; if(!it || it.type !== "live") return;
+    var lab = c.querySelector(".lab"), old = lab && lab.querySelector(".ep"), h = epCard(it);
+    if(old) old.remove();
+    if(lab && h) lab.insertAdjacentHTML("beforeend", h);
+  });
+  if(player.classList.contains("open")) showEpg();
+  if(page === "guia") drawGuia();
+}
+function showEpg(){
+  var el = $("pepg"), x = current && nowNext(current), h = "";
+  if(x){
+    if(x.now) h += "<b>Agora</b> " + esc(x.now[2]) + ' <em>até às ' + hm(x.now[1]) + '</em><span class="bar"><b style="width:' + pct(x.now).toFixed(1) + '%"></b></span>';
+    if(x.next) h += "<em>A seguir · " + hm(x.next[0]) + "</em> " + esc(x.next[2]);
+  }
+  el.innerHTML = h;
+}
+var guiaItems = [];
+function guiaPage(){
+  var tok = viewTok;
+  view.innerHTML = '<div class="page"><p class="sub">O que está a dar agora e o que vem a seguir.</p>' +
+    '<div class="chips"><button class="chip nav on" id="gPT">Portugal</button><button class="chip nav" id="gUK">UK</button></div>' +
+    '<div class="glist" id="glist"></div><div class="empty" id="gempty"><div class="spin"></div>A carregar o guia…</div></div>' + foot();
+  function show(key){
+    $("gPT").classList.toggle("on", key === "pt"); $("gUK").classList.toggle("on", key === "uk");
+    $("glist").innerHTML = ""; $("gempty").style.display = "block";
+    Promise.all([EPG ? Promise.resolve() : loadEpg(), loadList(key, SRC[key].url)]).then(function(r){
+      if(tok !== viewTok) return;
+      var seen = [];
+      guiaItems = r[1].items.filter(function(it){
+        var l = showable(it) && epgOf(it);
+        if(!l || seen.indexOf(l) >= 0) return false;   // same channel twice
+        seen.push(l); return true;
+      });
+      drawGuia();
+    }).catch(function(){ if(tok === viewTok) $("gempty").textContent = "Não consegui carregar o guia. Tenta daqui a pouco."; });
+  }
+  $("gPT").onclick = function(){ show("pt"); };
+  $("gUK").onclick = function(){ show("uk"); };
+  show("pt");
+}
+function drawGuia(){
+  var box = $("glist"); if(!box) return;
+  var foc = document.activeElement && document.activeElement.classList.contains("gr") ? document.activeElement.dataset.i : null;
+  var lid = register(guiaItems);
+  box.innerHTML = guiaItems.map(function(it, i){
+    var x = nowNext(it) || {}, n = x.now, nx = x.next;
+    return '<button class="gr nav" data-l="' + lid + '" data-i="' + i + '">' +
+      '<span class="gl" style="background:' + tint(it.name) + '">' + (it.logo ? '<img loading="lazy" referrerpolicy="no-referrer" alt="" src="' + esc(it.logo) + '" onerror="this.remove()">' : esc(initials(it.name))) + "</span>" +
+      '<span class="gi"><b>' + esc(it.name) + "</b>" +
+      (n ? "<span>" + hm(n[0]) + " · " + esc(n[2]) + '</span><span class="bar"><b style="width:' + pct(n).toFixed(1) + '%"></b></span>' : "<span><em>Sem informação agora</em></span>") +
+      (nx ? '<span class="nx">A seguir · ' + hm(nx[0]) + " " + esc(nx[2]) + "</span>" : "") + "</span></button>";
+  }).join("");
+  $("gempty").style.display = guiaItems.length ? "none" : "block";
+  if(!guiaItems.length) $("gempty").textContent = "Sem guia para estes canais de momento.";
+  if(foc != null){ var f = box.querySelector('[data-i="' + foc + '"]'); if(f) f.focus({preventScroll:true}); }
+}
+loadEpg();
+setInterval(function(){ if(Date.now() / 1e3 - ((EPG && EPG.t) || 0) > 3 * 3600) loadEpg(); else refreshEp(); }, 60e3);
 
 /* ================= router ================= */
 var page = "home", viewTok = 0;
@@ -689,7 +803,7 @@ function go(p, opts){
   if(profile === "kids" && p !== "khome") p = "khome";
   if(player.classList.contains("open")) closePlayer(true);
   page = p; viewTok++; reg = {}; probeQ = []; probing = {};
-  var tv = /^(home|pt|uk|series|movies|kids|classic|pesca)$/.test(p) && profile !== "kids";
+  var tv = /^(home|pt|uk|series|movies|kids|classic|pesca|guia)$/.test(p) && profile !== "kids";
   var bottom = tv ? "home" : p;
   [].forEach.call(document.querySelectorAll("#bnav button"), function(b){ b.classList.toggle("on", b.dataset.go === bottom); });
   [].forEach.call(document.querySelectorAll("#chips button"), function(b){ b.classList.toggle("on", b.dataset.go === p); });
@@ -706,13 +820,14 @@ function go(p, opts){
   if(p === "radio") return radioPage();
   if(p === "classic") return category("movies", "classic");
   if(p === "pesca") return pescaPage();
+  if(p === "guia") return guiaPage();
   if(p === "khome") return kidsHome();
   return category(p, opts);
 }
 window.addEventListener("scroll", function(){ $("top").classList.toggle("solid", window.scrollY > 40); }, {passive:true});
 
 var TITLES = {home:"Início", pt:"Portugal", uk:"UK", series:"Séries", movies:"Filmes", kids:"Desenhos", classic:"Clássicos",
-  pesca:"Pesca", khome:"Miúdos", radio:"Rádios", m3u:"M3U", opcoes:"Opções", search:"Procurar", favs:"A minha lista"};
+  pesca:"Pesca", guia:"Guia TV", khome:"Miúdos", radio:"Rádios", m3u:"M3U", opcoes:"Opções", search:"Procurar", favs:"A minha lista"};
 var KIDS_SRC = {title:"Desenhos", sub:"Desenhos animados e canais para os miúdos"};
 // kids channels: the dedicated kids + animation lists (all of them), plus any kids channel found in the other lists
 var KIDS_LISTS = {kidsK:IPTV + "categories/kids.m3u", anim:IPTV + "categories/animation.m3u"};
@@ -1358,6 +1473,7 @@ function play(list, i){
   player.classList.add("open"); document.body.classList.add("locked");
   $("pname").textContent = current.name;
   $("psub").textContent = current.type === "ia" ? "Filme clássico" + (current.year ? " · " + current.year : "") : current.type === "radio" ? "📻 Rádio em direto" : current.type === "yt" ? "🎣 " + (current.group || "Pesca") : "● Ao vivo";
+  showEpg();
   player.classList.toggle("radio", current.type === "radio");
   player.classList.toggle("yt", current.type === "yt");
   if(current.type === "radio"){
