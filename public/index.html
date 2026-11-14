@@ -354,6 +354,7 @@ video::cue{background:#000c;color:#fff;font-size:clamp(17px,2.6vw,30px)}
     <button class="pbtn nav" id="bBack" title="Voltar">←</button>
     <div class="ptitle"><b id="pname"></b><small id="psub"></small><div class="pepg" id="pepg"></div></div>
     <button class="pbtn nav" id="bAir" title="Enviar para a Apple TV" style="display:none"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"/><path d="m12 15 5 6H7z" fill="currentColor"/></svg></button>
+    <button class="pbtn nav" id="bYt" title="Abrir na app do YouTube" style="display:none;width:auto;padding:0 16px;font-weight:800">▶ YouTube</button>
     <button class="pbtn nav" id="bFull" title="Ecrã inteiro">⛶</button>
   </div>
   <div class="pb">
@@ -1489,6 +1490,7 @@ function play(list, i){
   stopMedia(); wake();
   msg('<div><div class="spin"></div>A abrir ' + esc(current.name) + "…</div>");
   if(!document.activeElement || !player.contains(document.activeElement)) $("bNext").focus({preventScroll:true});
+  $("bYt").style.display = current.type === "yt" ? "" : "none";
   if(current.type === "yt"){
     msg("");
     var cc = subPref === "off" ? "" : "&cc_load_policy=1&cc_lang_pref=" + (subPref === "auto" ? "pt" : "en");
@@ -1500,6 +1502,12 @@ function play(list, i){
   else if(current.type === "live" || current.type === "radio") startLive(tok);
   else start(src(current), tok);
 }
+$("bYt").onclick = function(){
+  if(!current || current.type !== "yt") return;
+  var u = "https://www.youtube.com/watch?v=" + encodeURIComponent(current.id);
+  if(ON_TV_APP) location.href = u;                 // the TV/phone app hands it to the YouTube app
+  else window.open(u, "_blank");
+};
 function startLive(tok){
   var mode = viaOf(current);
   start(src(current, mode), tok, function(){
