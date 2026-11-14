@@ -2,7 +2,7 @@
 
 Ver tudo sem gastar um tostão.
 
-- `public/` – a app (web). O Cloudflare (Worker **wild-field-f05c**) publica-a sozinho sempre que há alterações.
+- `public/` – a app (web). O Cloudflare (Worker **wild-field-f05c**) está ligado a este repositório e publica-a sozinho sempre que há alterações no ramo `master`.
   Link: https://wild-field-f05c.ronnieandrodrigues.workers.dev
 - `android/` – a app para a TV (TCL / Google TV / Android TV). O GitHub constrói o APK sozinho (separador **Actions**).
 
