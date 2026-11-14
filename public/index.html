@@ -353,8 +353,8 @@ var HTTPS = location.protocol === "https:";
 var BLOCK = /(?:^|[^a-zà-ÿ])man[aá](?![a-zà-ÿ])|igreja|church|gospel|evang|kuriakos|relig|cat[oó]lic|f[aá]tima|can[cç][aã]o nova|r[aá]dio maria|ewtn|daystar|tbn\b|god ?tv|jesus|b[ií]blia|bible|cristo|christ(?!mas)|islam|qur.?an|madani|ahlulbayt|peace tv|iqra|hidayat|adventist|pentecost|universal do reino|iurd|aleluia|hallelujah|worship|faith|ora[cç][aã]o|miss[aã]o|ministr|pastor|apostol/i;
 // UK tab: not Indian / South Asian or other foreign-language channels
 var NOT_UK = /(?:^|[^a-z])(zee\w*|sony\w*|colou?rs|star (?:plus|bharat|gold|utsav|life|jalsha)|b4u\w*|aaj tak|ptc\w*|sikh\w*|akaal|sangat|khalsa|punjab\w*|bollywood|desi|hindi|tamil\w*|telugu|malayalam|kannada|bengali|bangla\w*|gujarat\w*|marathi|urdu|ary\w*|geo|hum|sanskar|aastha|venus|mh ?one|9x\w*|zing|isai|tv9|ndtv|india\w*|bharat\w*|sunrise|lyca\w*|kalaignar|sun (?:tv|music)|vijay|jaya|asianet|channel s|ntv|ekushey|atn|ibc|deepam|vaanavil|gtv|dd (?:national|news|india)|republic|times now|wion|mastiii|filmy|pakistan\w*|ptv|dunya|samaa|bol|sangeet|kesari|sanjha|brit ?asia|mati|nepal\w*|sri lanka\w*|sinhala|b4u|bolly\w*|masala|filmi\w*|hindustan\w*|desi\w*|shemaroo|manoranjan|dhamaka|balle balle|bhakti|bhojpuri|tollywood|kollywood)(?![a-z])/i;
-var KIDS_STAR = /mr\.? ?bean|peppa|pocoyo|masha|oggy|zig ?(&|and|e|y) ?sharko|shaun the sheep|pingu|teletubbies|garfield|smurf|pitufo|looney|tom (and|&|e|y) jerry|moonbug|cocomelon|baby ?shark|pinkfong|blippi/i;
-var KIDS = /kids|kid\b|animation|animad|cartoon|children|infantil|desenhos|dibujos|junior|baby|toon|anime|pequenos|panda|mr\.? ?bean|peppa|pocoyo|pingu|teletubbies|masha|caillou|cocomelon|pinkfong|baby ?shark|blippi|\bryan\b|oggy|zig ?(&|and|e|y) ?sharko|garfield|smurf|pitufo|strumpf|looney|tom (and|&|e|y) jerry|scooby|\bsonic\b|pok[eé]mon|ninjago|\blego\b|power rangers|transformers|inspector gadget|danger mouse|shaun the sheep|fireman sam|bob the builder|thomas (and|&) friends|noddy|paw patrol|\bdora\b|\bbarbie\b|hot wheels|my little pony|polly pocket|super ?wings|robocar|bluey|\bclan\b|zigzag|zig zag|canal panda|nick ?jr|nickelodeon|boomerang|baby ?tv|duck ?tv|kidoodle|toon ?goggles|happy kids|kartoon|moonbug|wildbrain|cbeebies|cbbc|pop ?(kids|max|up)?$|tiny pop/i;
+var KIDS_STAR = /mickey|minnie|donald|pateta|goofy|disney|steamboat|mr\.? ?bean|peppa|pocoyo|masha|oggy|zig ?(&|and|e|y) ?sharko|shaun the sheep|pingu|teletubbies|garfield|smurf|pitufo|looney|tom (and|&|e|y) jerry|moonbug|cocomelon|baby ?shark|pinkfong|blippi/i;
+var KIDS = /mickey|minnie|donald|pateta|goofy|disney|steamboat|kids|kid\b|animation|animad|cartoon|children|infantil|desenhos|dibujos|junior|baby|toon|anime|pequenos|panda|mr\.? ?bean|peppa|pocoyo|pingu|teletubbies|masha|caillou|cocomelon|pinkfong|baby ?shark|blippi|\bryan\b|oggy|zig ?(&|and|e|y) ?sharko|garfield|smurf|pitufo|strumpf|looney|tom (and|&|e|y) jerry|scooby|\bsonic\b|pok[eé]mon|ninjago|\blego\b|power rangers|transformers|inspector gadget|danger mouse|shaun the sheep|fireman sam|bob the builder|thomas (and|&) friends|noddy|paw patrol|\bdora\b|\bbarbie\b|hot wheels|my little pony|polly pocket|super ?wings|robocar|bluey|\bclan\b|zigzag|zig zag|canal panda|nick ?jr|nickelodeon|boomerang|baby ?tv|duck ?tv|kidoodle|toon ?goggles|happy kids|kartoon|moonbug|wildbrain|cbeebies|cbbc|pop ?(kids|max|up)?$|tiny pop/i;
 function isKids(it){ return KIDS.test(it.group || "") || KIDS.test(it.name || ""); }
 function blocked(it){ return BLOCK.test(it.name || "") || BLOCK.test(it.group || ""); }
 // optional proxy (Cloudflare Worker) for channels whose servers block other websites
@@ -497,7 +497,7 @@ function iaSearch(term, page, coll){
   return fetch(u).then(function(r){ return r.json(); }).then(function(j){
     var items = ((j.response && j.response.docs) || []).map(function(d){
       return {type:"ia", id:d.identifier, name:Array.isArray(d.title) ? d.title[0] : (d.title || d.identifier),
-        year:d.year ? String(d.year).slice(0, 4) : "", logo:"https://archive.org/services/img/" + d.identifier, kid:coll === "classic_cartoons" ? 1 : 0};
+        year:d.year ? String(d.year).slice(0, 4) : "", logo:"https://archive.org/services/img/" + d.identifier, kid:/cartoon/.test(coll) ? 1 : 0};
     });
     if(!term) sset(ck, {t:now(), items:items});
     return items;
@@ -687,7 +687,7 @@ function kidsAll(){
       if(!seen[k] && !seen[it.url]){ seen[k] = 1; seen[it.url] = 1; r.push(it); }
     }); });
     // well-known favourites first (Mr Bean, Peppa, Pocoyo…)
-    var FAV = /mr\.? ?bean|peppa|pocoyo|masha|oggy|zig|shaun|pingu|garfield|smurf|pitufo|looney|tom (and|&|e|y) jerry|sonic|pok[eé]mon|lego|ninjago|teletubbies|panda|zigzag|clan/i;
+    var FAV = /mickey|minnie|donald|pateta|goofy|disney|steamboat|mr\.? ?bean|peppa|pocoyo|masha|oggy|zig|shaun|pingu|garfield|smurf|pitufo|looney|tom (and|&|e|y) jerry|sonic|pok[eé]mon|lego|ninjago|teletubbies|panda|zigzag|clan/i;
     r.sort(function(a, b){ return (FAV.test(b.name) ? 1 : 0) - (FAV.test(a.name) ? 1 : 0); });
     return {t:now(), items:r};
   });
@@ -755,8 +755,17 @@ function kidsHome(){
   var tok = viewTok;
   view.innerHTML = '<div class="page" style="padding-left:0;padding-right:0">' +
     '<div class="khero"><svg viewBox="0 0 100 100"><rect width="100" height="100" fill="url(#kg)"/><circle cx="50" cy="54" r="27" fill="#fff4cc"/><circle cx="40" cy="49" r="4.5" fill="#1b1035"/><circle cx="60" cy="49" r="4.5" fill="#1b1035"/><path d="M38 61q12 11 24 0" fill="none" stroke="#1b1035" stroke-width="4.5" stroke-linecap="round"/><path d="M18 20l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" fill="#fff"/><circle cx="82" cy="22" r="5" fill="#fff" opacity=".8"/><circle cx="84" cy="80" r="3.5" fill="#fff" opacity=".7"/></svg><div><h1>Olá! 👋</h1><p>O que vamos ver hoje?</p></div></div>' +
-    rowShell("kLive", "📺 Desenhos animados agora") + rowShell("kClassic", "🎬 Desenhos clássicos") + rowShell("kMore", "🍿 Mais desenhos clássicos") + "</div>";
-  kidsAll().then(function(d){ var r = d.items.slice(0, 40); fillRow("kLive", r, tok); probe(r); }).catch(function(){ fillRow("kLive", [], tok); });
+    rowShell("kStar", "⭐ Os preferidos") + rowShell("kLive", "📺 Mais desenhos animados agora") + rowShell("kMickey", "🐭 Mickey e clássicos Disney") +
+    rowShell("kClassic", "🎬 Desenhos clássicos") + rowShell("kMore", "🍿 Mais desenhos clássicos") + "</div>";
+  kidsAll().then(function(d){
+    var star = d.items.filter(function(it){ return KIDS_STAR.test(it.name); });
+    var rest = d.items.filter(function(it){ return !KIDS_STAR.test(it.name); });
+    fillRow("kStar", star, tok); fillRow("kLive", rest, tok); probe(d.items);
+  }).catch(function(){ fillRow("kStar", [], tok); fillRow("kLive", [], tok); });
+  // Mickey's first cartoons (1928) are public domain, on the Internet Archive
+  iaSearch("mickey OR steamboat", 1, "animationandcartoons OR classic_cartoons").then(function(l){
+    fillRow("kMickey", l.filter(function(it){ return /mickey|steamboat|plane crazy|gallopin/i.test(it.name); }).map(function(it){ it.kid = 1; return it; }), tok);
+  }).catch(function(){ fillRow("kMickey", [], tok); });
   iaSearch("", 1, "classic_cartoons").then(function(l){ fillRow("kClassic", l.slice(0, 30), tok); fillRow("kMore", shuffle(l.slice(30)), tok); })
     .catch(function(){ fillRow("kClassic", [], tok); fillRow("kMore", [], tok); });
 }
