@@ -222,6 +222,19 @@ video::cue{background:#000c;color:#fff;font-size:clamp(17px,2.6vw,30px)}
 .pmsg{position:absolute;top:0;right:0;bottom:0;left:0;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;font-weight:700;font-size:18px;background:#000a;z-index:1}
 .pmsg.show{display:flex}
 
+/* ---------- light mode (TVs) ---------- */
+.lite *{transition:none!important}
+.lite .hero .bg{filter:none;opacity:.28}
+.lite .hero .art,.lite .card .art img{filter:none}
+.lite .hero,.lite .card,.lite #bnav,.lite .hero .art.poster{box-shadow:none}
+.lite #bnav,.lite .pbtn{backdrop-filter:none;-webkit-backdrop-filter:none}
+.lite #bnav{background:#22252b}
+.lite .card:hover,.lite .card:focus-visible{transform:none}
+.lite .skel{animation:none}
+.lite .rays{display:none}
+.lite #intro.play .ibox{animation:iinlite 1.4s ease forwards}
+@keyframes iinlite{0%{opacity:0}25%{opacity:1}75%{opacity:1}100%{opacity:0}}
+
 /* ---------- older iPads / Safari (no aspect-ratio, clamp or flex gap) ---------- */
 @supports not (aspect-ratio: 1 / 1){
   .strip>*{margin-right:10px}
@@ -385,13 +398,20 @@ function checkAutoProxy(force){
       if(ok && !was){ dead = {}; okc = {}; sset("dead2", dead); sset("ok", okc); }
     });
 }
-function src(it){
-  var p = proxyBase();
-  if(it.type === "radio" && !(p && HTTPS && /^http:\/\//i.test(it.url))) return it.url;   // radios play directly
-  if(!p || (it.type !== "live" && it.type !== "radio")) return it.url;
-  return p + "/?url=" + encodeURIComponent(it.url) + (it.ref ? "&ref=" + encodeURIComponent(it.ref) : "") + (it.ua ? "&ua=" + encodeURIComponent(it.ua) : "");
+var ON_TV_APP = /ForretaTV-Android/.test(navigator.userAgent);
+var LOCAL_BRIDGE = "https://ftv.local";              // built into the Android TV app: uses the TV's own internet (and its VPN)
+function streamBase(){ return ON_TV_APP ? LOCAL_BRIDGE : proxyBase(); }
+var via = sget("via", {});                          // url -> "d" (direct) or "p" (through the bridge)
+function viaOf(it){ return via[it.url] || ((HTTPS && /^http:\/\//i.test(it.url)) ? "p" : "d"); }
+function setVia(it, m){ via[it.url] = m; sset("via", via); }
+function src(it, mode){
+  if(it.type !== "live" && it.type !== "radio") return it.url;
+  mode = mode || viaOf(it);
+  var b = streamBase();
+  if(mode === "d" || !b) return it.url;
+  return b + "/?url=" + encodeURIComponent(it.url) + (it.ref ? "&ref=" + encodeURIComponent(it.ref) : "") + (it.ua ? "&ua=" + encodeURIComponent(it.ua) : "");
 }
-function usable(it){ return !(HTTPS && /^http:\/\//i.test(it.url)) || !!proxyBase(); }
+function usable(it){ return !(HTTPS && /^http:\/\//i.test(it.url)) || !!streamBase(); }
 function showable(it){ if(it.type === "yt") return true; return !blocked(it) && (!(it.type === "live" || it.type === "radio") || (usable(it) && !isDead(it.url))); }
 
 /* ================= storage ================= */
@@ -576,12 +596,15 @@ function radioPage(){
 }
 
 var langMemo = {};
+var langText = {};
+function langFile(l){
+  if(!langText[l]) langText[l] = fetch(IPTV + "languages/" + l + ".m3u", {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).catch(function(){ return ""; });
+  return langText[l];
+}
 function langSet(langs){
   var k = langs.join(",");
   if(langMemo[k]) return langMemo[k];
-  langMemo[k] = Promise.all(langs.map(function(l){
-    return fetch(IPTV + "languages/" + l + ".m3u", {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).catch(function(){ return ""; });
-  })).then(function(txts){
+  langMemo[k] = Promise.all(langs.map(langFile)).then(function(txts){
     var set = new Set();
     txts.forEach(function(t){ t.split(/\r?\n/).forEach(function(l){ l = l.trim(); if(l && l.charAt(0) !== "#") set.add(l); }); });
     return set;
@@ -610,11 +633,16 @@ function probeNext(){
   var it = probeQ.shift(); if(!it) return;
   probeBusy++;
   var ctl = new AbortController(), to = setTimeout(function(){ ctl.abort(); }, PROBE_TIMEOUT);
-  fetch(src(it), {signal:ctl.signal, cache:"no-store"}).then(function(r){
-    if(!r.ok) throw 0;
-    try{ r.body && r.body.cancel(); }catch(e){}
-    markOk(it.url);
-  }).catch(function(){ markDead(it.url); hideEverywhere(it.url); })
+  var modes = viaOf(it) === "p" ? ["p"] : (streamBase() ? ["d", "p"] : ["d"]);
+  function attempt(i){
+    if(i >= modes.length) return Promise.reject(0);
+    return fetch(src(it, modes[i]), {signal:ctl.signal, cache:"no-store"}).then(function(r){
+      if(!r.ok) throw 0;
+      try{ r.body && r.body.cancel(); }catch(e){}
+      if(modes[i] === "p") setVia(it, "p");
+    }).catch(function(){ return attempt(i + 1); });
+  }
+  attempt(0).then(function(){ markOk(it.url); }, function(){ markDead(it.url); hideEverywhere(it.url); })
   .then(function(){ clearTimeout(to); probeBusy--; delete probing[it.url]; probeNext(); });
 }
 function hideEverywhere(url){
@@ -789,6 +817,10 @@ function kidsHome(){
     .catch(function(){ fillRow("kClassic", [], tok); fillRow("kMore", [], tok); });
 }
 
+/* ================= light mode on TVs (no heavy blur / shadows / animations) ================= */
+var LITE = ON_TV_APP || /Android TV|GoogleTV|BRAVIA|AFT[A-Z]|SMART-?TV|SmartTV|Tizen|Web0S|HbbTV|CrKey/i.test(navigator.userAgent);
+if(LITE) document.documentElement.classList.add("lite");
+
 /* ================= profiles + intro ================= */
 var profile = null;
 function showProfiles(){
@@ -819,7 +851,7 @@ function enterProfile(p){
   it.classList.remove("play"); it.classList.add("show"); void it.offsetWidth; it.classList.add("play");
   if(sget("introSound", true)) introSound();
   var done = function(){ it.classList.remove("show", "play"); it.onclick = null; };
-  it.onclick = done; setTimeout(done, 2700);
+  it.onclick = done; setTimeout(done, LITE ? 1400 : 2700);
   var target = p === "kids" ? "khome" : "home";
   (proxyReady || Promise.resolve()).then(function(){ go(target); }, function(){ go(target); });
 }
@@ -1076,7 +1108,7 @@ function opcoesPage(){
       el.textContent = /forreta/i.test(t) ? "✅ Ponte ligada e a funcionar." : "⚠️ Esse endereço respondeu, mas não parece ser a ponte da Forreta TV.";
     }).catch(function(){ el.textContent = "❌ Não consegui falar com a ponte. Confirma o endereço."; });
   }
-  function resetChecks(){ dead = {}; okc = {}; sset("dead2", dead); sset("ok", okc); }
+  function resetChecks(){ dead = {}; okc = {}; via = {}; sset("dead2", dead); sset("ok", okc); sset("via", via); }
   $("pxSave").onclick = function(){
     var u = $("pxUrl").value.trim();
     if(!/^https:\/\//i.test(u)){ $("pxMsg").textContent = "O endereço tem de começar por https://"; return; }
@@ -1311,10 +1343,21 @@ function play(list, i){
     return;
   }
   if(current.type === "ia") iaVideoUrl(current.id).then(function(u){ if(tok === playTok){ start(u.url, tok); addFileSubs(u.subs, tok); } }).catch(function(){ if(tok === playTok) failed(tok); });
+  else if(current.type === "live" || current.type === "radio") startLive(tok);
   else start(src(current), tok);
 }
-function start(url, tok){
-  var fail = function(){ if(tok === playTok) failed(tok); };
+function startLive(tok){
+  var mode = viaOf(current);
+  start(src(current, mode), tok, function(){
+    if(mode === "d" && streamBase()){                // direct did not work: try through the bridge
+      mode = "p"; setVia(current, "p"); stopMedia();
+      msg('<div><div class="spin"></div>A tentar pela ponte…</div>');
+      start(src(current, "p"), tok);
+    } else failed(tok);
+  });
+}
+function start(url, tok, onFail){
+  var fail = function(){ if(tok === playTok){ if(onFail){ var f = onFail; onFail = null; f(); } else failed(tok); } };
   playTimer = setTimeout(function(){ if(tok === playTok && video.readyState < 2) fail(); }, PLAY_TIMEOUT);
   video.oncanplay = function(){ if(tok !== playTok) return; clearTimeout(playTimer); msg(""); wake(); if(current.type === "live" || current.type === "radio") markOk(current.url); };
   var direct = current.type === "radio" ? !current.hls : /\.(mp4|webm|ogv|mov)(\?|$)/i.test(url);
@@ -1444,6 +1487,8 @@ window.ftvBack = function(){
   if(page !== "home" && page !== "khome"){ go(profile === "kids" ? "khome" : "home"); return true; }
   return false;
 };
+var MODE_ID = ON_TV_APP ? "tv-local-1" : "web-direct-1";
+if(sget("modeId", "") !== MODE_ID){ dead = {}; okc = {}; via = {}; sset("dead2", dead); sset("ok", okc); sset("via", via); sset("modeId", MODE_ID); }
 showProfiles();
 proxyReady = checkAutoProxy();
 setTimeout(dailyRefresh, 5000);

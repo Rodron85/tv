@@ -14,8 +14,19 @@ android {
         versionName "1." + (System.getenv("BUILD_NUMBER") ?: "0")
     }
 
+    // one fixed key, so every new version installs over the previous one on the TV
+    signingConfigs {
+        forreta {
+            storeFile file('forreta.keystore')
+            storePassword 'forreta-tv'
+            keyAlias 'forreta'
+            keyPassword 'forreta-tv'
+        }
+    }
+
     buildTypes {
-        release { minifyEnabled false }
+        debug { signingConfig signingConfigs.forreta }
+        release { minifyEnabled false; signingConfig signingConfigs.forreta }
     }
 
     compileOptions {
