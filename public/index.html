@@ -1132,6 +1132,28 @@ function opcoesPage(){
   function sndLabel(){ $("sndBtn").textContent = sget("introSound", true) ? "🔊 Som da intro: ligado" : "🔇 Som da intro: desligado"; $("sndBtn").classList.toggle("on", sget("introSound", true)); }
   $("sndBtn").onclick = function(){ sset("introSound", !sget("introSound", true)); sndLabel(); };
   sndLabel();
+  var diagItems = [];
+  function tryUrl(u){
+    var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var to = setTimeout(function(){ if(ctl) ctl.abort(); }, 9000);
+    return fetch(u, ctl ? {signal:ctl.signal, cache:"no-store"} : {cache:"no-store"}).then(function(r){
+      clearTimeout(to);
+      return r.text().then(function(t){
+        return r.status + (r.ok ? (/#EXTM3U/.test(t) ? " ✅ lista de vídeo recebida" : " ⚠️ resposta estranha") : r.status === 403 ? " ⛔ recusado (bloqueio de país?)" : r.status === 404 ? " ❓ não existe" : " ❌");
+      });
+    }).catch(function(e){ clearTimeout(to); return "sem resposta (" + (e && e.name === "AbortError" ? "demorou demasiado" : "bloqueado pelo browser ou sem ligação") + ")"; });
+  }
+  $("dgOut").addEventListener("click", function(e){
+    var t = e.target.closest("[data-dt]"), w = e.target.closest("[data-dp]");
+    if(w){ var it2 = diagItems[+w.dataset.dp]; delete dead[it2.url]; sset("dead2", dead); play([it2], 0); return; }
+    if(!t) return;
+    var it = diagItems[+t.dataset.dt], out = $("dt" + t.dataset.dt);
+    out.innerHTML = "<br>A testar…";
+    var b = streamBase();
+    Promise.all([tryUrl(src(it, "d")), b ? tryUrl(src(it, "p")) : Promise.resolve("sem ponte")]).then(function(r){
+      out.innerHTML = "<br>• Direto: " + esc(r[0]) + "<br>• Pela ponte" + (ON_TV_APP ? " da TV" : " (Cloudflare, sai pelo Reino Unido)") + ": " + esc(r[1]);
+    });
+  });
   $("dgGo").onclick = function(){
     var q = $("dgIn").value.trim().toLowerCase(), out = $("dgOut");
     if(q.length < 2){ out.textContent = "Escreve pelo menos 2 letras."; return; }
@@ -1147,7 +1169,7 @@ function opcoesPage(){
       var fin = loadList(L.key, L.url).then(function(d){ return d.items; }).catch(function(){ return []; });
       return Promise.all([raw, fin]).then(function(r){ return {L:L, raw:r[0], fin:r[1]}; });
     })).then(function(res){
-      var rows = [];
+      var rows = []; diagItems.length = 0;
       res.forEach(function(x){
         x.raw.forEach(function(it){
           if(it.name.toLowerCase().indexOf(q) < 0) return;
@@ -1155,7 +1177,9 @@ function opcoesPage(){
           var why = !inFinal ? (blocked(it) ? "🚫 tirado (religioso)" : NOT_UK.test(it.name) ? "🚫 tirado (indiano/estrangeiro)" : "🌐 tirado pelo filtro de línguas (ou repetido)")
             : (HTTPS && /^http:/i.test(it.url) && !p) ? "🔌 precisa da ponte"
             : isDead(it.url) ? "😴 escondido: não estava a dar (volta a ser testado)" : "✅ visível";
-          rows.push("<b>" + esc(it.name) + "</b> · " + esc(x.L.name) + " → " + why);
+          var n = diagItems.push(it) - 1;
+          rows.push("<b>" + esc(it.name) + "</b> · " + esc(x.L.name) + " → " + why +
+            ' <button class="chip nav" data-dt="' + n + '">Testar</button> <button class="chip nav" data-dp="' + n + '">Ver na mesma</button><span id="dt' + n + '"></span>');
         });
       });
       out.innerHTML = "<p>Ponte: " + (p ? "✅ ligada (" + esc(p.replace(/^https?:\/\//, "")) + ")" : "❌ desligada") + "</p>" +
