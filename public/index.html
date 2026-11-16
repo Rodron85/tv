@@ -1646,7 +1646,7 @@ window.ftvBack = function(){
   if(page !== "home" && page !== "khome"){ go(profile === "kids" ? "khome" : "home"); return true; }
   return false;
 };
-var MODE_ID = ON_TV_APP ? "tv-local-1" : "web-direct-1";
+var MODE_ID = ON_TV_APP ? "tv-local-2" : "web-direct-2";
 if(sget("modeId", "") !== MODE_ID){ dead = {}; okc = {}; via = {}; sset("dead2", dead); sset("ok", okc); sset("via", via); sset("modeId", MODE_ID); }
 /* Network country changed (VPN on/off, another country)? Channels that failed before may work now: check them again. */
 (function(){
