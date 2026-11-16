@@ -1,0 +1,26 @@
+name: probe
+on: { push: { branches: [probe] } }
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -s https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8 -o ft.m3u
+          curl -s https://iptv-org.github.io/iptv/countries/uk.m3u -o uk.m3u
+          python3 - <<'PY'
+          import re,urllib.request,concurrent.futures as cf
+          items=[]
+          for f,g in [("ft.m3u",'group-title="UK"'),("uk.m3u","")]:
+              L=open(f,encoding="utf-8",errors="ignore").read().splitlines()
+              for i,l in enumerate(L):
+                  if l.startswith("#EXTINF") and g in l:
+                      for u in L[i+1:i+4]:
+                          if u.startswith("http"): items.append((f[:2],l.split(",")[-1].strip(),u.strip())); break
+          def t(it):
+              try:
+                  r=urllib.request.urlopen(urllib.request.Request(it[2],headers={"User-Agent":"Mozilla/5.0"}),timeout=10)
+                  b=r.read(300); return (r.status,"M3U" if b"#EXTM3U" in b else "?")
+              except Exception as e: return (getattr(e,"code","ERR"),str(e)[:40])
+          with cf.ThreadPoolExecutor(30) as ex:
+              for it,r in zip(items,ex.map(t,items)): print(it[0],"|",it[1][:30],"|",r,"|",it[2][:70])
+          PY
