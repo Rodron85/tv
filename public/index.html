@@ -1643,6 +1643,19 @@ window.ftvBack = function(){
 };
 var MODE_ID = ON_TV_APP ? "tv-local-1" : "web-direct-1";
 if(sget("modeId", "") !== MODE_ID){ dead = {}; okc = {}; via = {}; sset("dead2", dead); sset("ok", okc); sset("via", via); sset("modeId", MODE_ID); }
+/* Network country changed (VPN on/off, another country)? Channels that failed before may work now: check them again. */
+(function(){
+  try{
+    fetch("/cdn-cgi/trace", {cache:"no-store"}).then(function(r){ return r.text(); }).then(function(t){
+      var m = /\bloc=([A-Z]{2})/.exec(t); if(!m) return;
+      var was = sget("loc", "");
+      if(was !== m[1]){
+        dead = {}; okc = {}; via = {}; sset("dead2", dead); sset("ok", okc); sset("via", via); sset("loc", m[1]);
+        if(was && /^(pt|uk|kids|home)$/.test(page)) go(page);
+      }
+    }).catch(function(){});
+  }catch(e){}
+})();
 showProfiles();
 proxyReady = checkAutoProxy();
 setTimeout(dailyRefresh, 5000);
