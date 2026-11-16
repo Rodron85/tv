@@ -1540,6 +1540,7 @@ if(video.textTracks) video.textTracks.addEventListener("addtrack", function(){ s
 $("bSub").onclick = function(){
   subPref = subPref === "auto" ? "en" : subPref === "en" ? "off" : "auto";
   sset("subs", subPref);
+  if(current && current.type === "yt"){ ytLoad(Math.floor(yt.t)); toast({auto:"Legendas: Português", en:"Legendas: Inglês", off:"Sem legendas"}[subPref]); return; }
   if(subPref === "auto") getTranslator();      // the click lets Chrome download the translator the first time
   applySubs();
 };
@@ -1576,9 +1577,7 @@ function play(list, i){
   if(!document.activeElement || !player.contains(document.activeElement)) $("bNext").focus({preventScroll:true});
   if(current.type === "yt"){
     msg("");
-    var cc = subPref === "off" ? "" : "&cc_load_policy=1&cc_lang_pref=" + (subPref === "auto" ? "pt" : "en");
-    $("ytf").src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(current.id) + "?autoplay=1&rel=0&modestbranding=1&playsinline=1&hl=pt&enablejsapi=1&origin=" + encodeURIComponent(location.origin) + cc;
-    yt.t = 0; yt.state = -1;
+    yt.t = 0; yt.state = -1; ytLoad(0);
     $("bBack").focus({preventScroll:true});
     if(!matchMedia("(pointer:coarse)").matches) setTimeout(function(){ if(current && current.type === "yt") ytFs(true); }, 400);   // TV: straight to full screen
     return;
@@ -1671,12 +1670,25 @@ window.addEventListener("message", function(e){
   try{ var d = JSON.parse(e.data); if(d.info){ if(d.info.currentTime != null) yt.t = d.info.currentTime; if(d.info.playerState != null) yt.state = d.info.playerState; } }catch(x){}
 });
 $("ytf").addEventListener("load", function(){ try{ $("ytf").contentWindow.postMessage(JSON.stringify({event:"listening", id:1}), "*"); }catch(e){} });
+function ytLoad(start){
+  var cc = subPref === "off" ? "&cc_load_policy=0" : "&cc_load_policy=1&cc_lang_pref=" + (subPref === "auto" ? "pt" : "en") + "&hl=" + (subPref === "auto" ? "pt" : "en");
+  $("ytf").src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(current.id) + "?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=" + encodeURIComponent(location.origin) + cc + (start ? "&start=" + start : "");
+  $("bSub").textContent = {auto:"PT", en:"EN", off:"CC"}[subPref];
+}
+var okDown = 0;
+document.addEventListener("keyup", function(e){
+  if(!(okDown && (e.key === "Enter" || e.key === " ") && player.classList.contains("yfs"))) return;
+  e.preventDefault();
+  var held = Date.now() - okDown; okDown = 0;
+  if(held > 600) $("bSub").onclick();                         // hold OK: change subtitles
+  else { ytCmd(yt.state === 1 ? "pauseVideo" : "playVideo"); toast(yt.state === 1 ? "Pausa" : "▶"); }
+});
 function ytFs(on){
   player.classList.toggle("yfs", on);
   if(on){
     try{ if(!ON_TV_APP && player.requestFullscreen && !document.fullscreenElement) player.requestFullscreen().catch(function(){}); }catch(e){}
     try{ document.activeElement && document.activeElement.blur(); }catch(e){}
-    toast("OK pausa · ◀ ▶ 10 s · ▲ ▼ zoom · Voltar sai");
+    toast("OK pausa · OK sem largar legendas · ◀ ▶ 10 s · ▲ ▼ zoom");
   } else {
     player.classList.remove("yz1", "yz2"); yt.zoom = 0;
     try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
@@ -1684,7 +1696,8 @@ function ytFs(on){
   }
 }
 function ytKey(k){
-  if(k === "Enter" || k === " " || k === "MediaPlayPause"){ ytCmd(yt.state === 1 ? "pauseVideo" : "playVideo"); toast(yt.state === 1 ? "Pausa" : "▶"); return true; }
+  if(k === "Enter" || k === " "){ if(!okDown) okDown = Date.now(); return true; }     // decided on key up (short = pause, hold = subtitles)
+  if(k === "MediaPlayPause"){ ytCmd(yt.state === 1 ? "pauseVideo" : "playVideo"); toast(yt.state === 1 ? "Pausa" : "▶"); return true; }
   if(k === "MediaPlay"){ ytCmd("playVideo"); return true; }
   if(k === "MediaPause"){ ytCmd("pauseVideo"); return true; }
   if(k === "ArrowRight" || k === "MediaFastForward"){ yt.t += 10; ytCmd("seekTo", [yt.t, true]); toast("+10 s"); return true; }
