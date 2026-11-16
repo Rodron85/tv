@@ -1122,6 +1122,18 @@ var GENRES = [
   ["Clássicos e décadas", /classic|cl[aá]ssic|retro|vintage|golden|\bold\b|\b[5-9]0s\b|\b00s\b|decade|throwback|rewind|replay|nostalg|cinema|\btcm\b|\bera\b/],
   ["Família", /family|famil|\bteen|kids/]
 ];
+// one channel, one place: "Bonanza" and "Bonanza CA" are the same; a show goes to Séries, a movie channel to Filmes
+function baseKey(n){ return chanKey(String(n || "").replace(/\s*\((united states|us|usa|uk|canada|latam)\)/ig, "").replace(/\s+(ca|us|uk|latam|au|nz|es|mx)$/i, "").replace(/^pluto( tv)?\s+/i, "")); }
+var MOVIEISH = /movie|film|cine|pel[ií]cula|horror|zombie|sci-?fi|romance|western|action|mystery|comedy|cinema|thriller|\bnetwork\b|lionsgate|outersphere|pantalla/i;
+function oneEach(list, other, key){
+  var seen = {}, inOther = {};
+  (other || []).forEach(function(it){ inOther[baseKey(it.name)] = 1; });
+  return list.filter(function(it){
+    var k = baseKey(it.name); if(seen[k]) return false; seen[k] = 1;
+    if(!inOther[k]) return true;
+    return key === "movies" ? MOVIEISH.test(it.name) : !MOVIEISH.test(it.name);
+  });
+}
 function genreOf(it){
   var t = (it.name + " " + (it.group || "")).toLowerCase();
   for(var i = 0; i < GENRES.length; i++) if(GENRES[i][1].test(t)) return GENRES[i][0];
@@ -1198,6 +1210,10 @@ function category(key, opts){
     if(tok !== viewTok) return;
     $("csub").textContent = s.sub + " · atualizado " + when(d.t) + (d.stale ? " (sem internet, última lista)" : "");
     all = d.items;
+    if(key === "movies" || key === "series"){
+      loadList(key === "movies" ? "series" : "movies", SRC[key === "movies" ? "series" : "movies"].url)
+        .then(function(o){ if(tok !== viewTok) return; all = oneEach(d.items, o.items, key); filter(); }).catch(function(){});
+    }
     function filter(){
       var q = cq.value.trim().toLowerCase();
       list = all.filter(function(it){ return showable(it) && (!q || it.name.toLowerCase().indexOf(q) >= 0 || (it.group||"").toLowerCase().indexOf(q) >= 0); });
