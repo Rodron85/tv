@@ -671,7 +671,7 @@ function probeNext(){
       if(modes[i] === "p") setVia(it, "p");
     }).catch(function(){ return attempt(i + 1); });
   }
-  attempt(0).then(function(){ markOk(it.url); }, function(){ markDead(it.url); hideEverywhere(it.url); })
+  attempt(0).then(function(){ markOk(it.url); }, function(){ if(/\bbbc\b/i.test(it.name)) return; markDead(it.url); hideEverywhere(it.url); })   // BBC: only hide after a real try
   .then(function(){ clearTimeout(to); probeBusy--; delete probing[it.url]; probeNext(); });
 }
 function hideEverywhere(url){
@@ -1521,6 +1521,7 @@ function startLive(tok){
     } else failed(tok);
   });
 }
+var lastErr = "";
 function start(url, tok, onFail){
   var fail = function(){ if(tok === playTok){ if(onFail){ var f = onFail; onFail = null; f(); } else failed(tok); } };
   playTimer = setTimeout(function(){ if(tok === playTok && video.readyState < 2) fail(); }, PLAY_TIMEOUT);
@@ -1531,6 +1532,7 @@ function start(url, tok, onFail){
     hls = new Hls({maxBufferLength:30, enableWorker:true});
     hls.on(Hls.Events.ERROR, function(ev, d){
       if(!d.fatal) return;
+      lastErr = (d.details || d.type || "erro") + (d.response && d.response.code != null ? " " + d.response.code : "") + (/ftv\.local|forreta-ponte/.test(url) ? " · ponte" : " · direto");
       if(d.type === Hls.ErrorTypes.MEDIA_ERROR && !rec){ rec = true; hls.recoverMediaError(); } else fail();
     });
     hls.on(Hls.Events.MANIFEST_PARSED, function(){ video.play().catch(function(){}); });
@@ -1544,8 +1546,10 @@ function failed(tok){
   clearTimeout(playTimer);
   if(current.type === "live" || current.type === "radio"){
     markDead(current.url); hideEverywhere(current.url);
-    msg((current.type === "radio" ? "Esta rádio" : "Este canal") + " não está a dar agora.<br>Fica escondida até amanhã. A passar à seguinte…".replace("escondida", current.type === "radio" ? "escondida" : "escondido").replace("à seguinte", current.type === "radio" ? "à seguinte" : "ao seguinte"));
-    setTimeout(function(){ if(tok === playTok) step(1); }, 2200);
+    msg((current.type === "radio" ? "Esta rádio" : "Este canal") + " não está a dar agora.<br>Fica escondida até amanhã. A passar à seguinte…".replace("escondida", current.type === "radio" ? "escondida" : "escondido").replace("à seguinte", current.type === "radio" ? "à seguinte" : "ao seguinte") +
+      (lastErr ? '<br><small style="opacity:.7;font-size:14px">(' + esc(lastErr) + ")</small>" : ""));
+    lastErr = "";
+    setTimeout(function(){ if(tok === playTok) step(1); }, 5000);
   } else msg("Não consegui abrir este filme. Experimenta outro.");
 }
 function step(d){
@@ -1652,7 +1656,7 @@ window.ftvBack = function(){
   if(page !== "home" && page !== "khome"){ go(profile === "kids" ? "khome" : "home"); return true; }
   return false;
 };
-var MODE_ID = ON_TV_APP ? "tv-local-3" : "web-direct-3";
+var MODE_ID = ON_TV_APP ? "tv-local-4" : "web-direct-4";
 if(sget("modeId", "") !== MODE_ID){ dead = {}; okc = {}; via = {}; sset("dead2", dead); sset("ok", okc); sset("via", via); sset("modeId", MODE_ID); }
 /* Network country changed (VPN on/off, another country)? Channels that failed before may work now: check them again. */
 (function(){
