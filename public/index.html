@@ -507,7 +507,7 @@ function parseM3U(text){
 /* ================= data loading (auto-updates daily) ================= */
 function loadList(key, url, force){
   if(!force && mem[key] && mem[key].url === url && now() - mem[key].t < DAY) return Promise.resolve(mem[key]);
-  var cached = sget("l9:"+key, null);
+  var cached = sget("l10:"+key, null);
   if(!force && cached && cached.url === url && now() - cached.t < DAY){ mem[key] = cached; return Promise.resolve(cached); }
   var parts = url.split(/\|(?=https?:\/\/)/);
   return Promise.all(parts.map(function(u){
@@ -537,7 +537,7 @@ function loadList(key, url, force){
       });
     }).then(function(items){
       var d = {t:now(), url:url, items:items};
-      mem[key] = d; sset("l9:"+key, d); return d;
+      mem[key] = d; sset("l10:"+key, d); return d;
     }).catch(function(e){ if(cached){ cached.stale = true; mem[key] = cached; return cached; } throw e; });
 }
 function live(key){ return loadList(key, SRC[key].url).then(function(d){ return d.items.filter(showable); }); }
@@ -1207,7 +1207,7 @@ function m3uPage(){
     f.text().then(function(txt){ var d = {t:now(), items:parseM3U(txt)}; mem.myfile = d; sset("list:myfile", d); sset("myurl", ""); $("myUrl").value = ""; showMy(d); });
   };
   $("myFileLbl").onkeydown = function(e){ if(e.key === "Enter") $("myFile").click(); };
-  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l9:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
+  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l10:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
 }
 
 function opcoesPage(){
