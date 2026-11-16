@@ -531,6 +531,7 @@ function loadList(key, url, force){
         return items.filter(function(it){
           if(NOT_UK.test(it.name) || NOT_UK.test(it.group || "")) return false;
           if(PAID.test(it.name) || FOREIGN_FEED.test(it.name)) return false;
+          if(key === "uk" && /\bradio\b|world service|asian network|lsn\.lv|\/audio\//i.test(it.name + " " + it.url)) return false;   // radios go to Rádios › UK
           return !it.org || !ok.size || ok.has(it.url) || KIDS_STAR.test(it.name);
         });
       });
@@ -573,11 +574,13 @@ function iaVideoUrl(id){
   });
 }
 var RB = ["https://all.api.radio-browser.info", "https://de1.api.radio-browser.info", "https://nl1.api.radio-browser.info", "https://at1.api.radio-browser.info"];
-function radios(force){
-  var c = sget("radios", null);
-  if(!force && mem.radios) return Promise.resolve(mem.radios);
-  if(!force && c && now() - c.t < DAY){ mem.radios = c.items; return Promise.resolve(c.items); }
-  var q = "/json/stations/search?countrycode=PT&hidebroken=true&order=clickcount&reverse=true&limit=300";
+function radios(force, cc){
+  cc = cc || "PT";
+  var ck = cc === "PT" ? "radios" : "radios_" + cc.toLowerCase(), mk = ck;
+  var c = sget(ck, null);
+  if(!force && mem[mk]) return Promise.resolve(mem[mk]);
+  if(!force && c && now() - c.t < DAY){ mem[mk] = c.items; return Promise.resolve(c.items); }
+  var q = "/json/stations/search?countrycode=" + cc + "&hidebroken=true&order=clickcount&reverse=true&limit=300";
   function tryN(i){
     if(i >= RB.length) return Promise.reject(new Error("offline"));
     return fetch(RB[i] + q).then(function(r){ if(!r.ok) throw 0; return r.json(); }).catch(function(){ return tryN(i + 1); });
@@ -589,17 +592,19 @@ function radios(force){
       if(!url || !/^https?:\/\//i.test(url)) return;
       var name = (st.name || "").replace(/\s+/g, " ").trim(), k = name.toLowerCase().replace(/[^a-z0-9à-ÿ]/g, "");
       if(!k || seen[k]) return; seen[k] = 1;
+      if(cc === "GB" && (NOT_UK.test(name) || NOT_UK.test(st.tags || "") || (st.language && !/english/i.test(st.language)))) return;
       items.push({type:"radio", name:name, url:url, logo:(st.favicon || "").replace(/^http:/, "https:"), group:st.tags || "", hls:st.hls == 1 || /\.m3u8(\?|$)/i.test(url)});
     });
-    sset("radios", {t:now(), items:items}); mem.radios = items; return items;
-  }).catch(function(e){ if(c){ mem.radios = c.items; return c.items; } throw e; });
+    sset(ck, {t:now(), items:items}); mem[mk] = items; return items;
+  }).catch(function(e){ if(c){ mem[mk] = c.items; return c.items; } throw e; });
 }
 function liveRadios(){ return radios().then(function(l){ return l.filter(showable); }); }
 
 /* ================= radio page ================= */
 function radioPage(){
   var tok = viewTok;
-  view.innerHTML = '<div class="page"><p class="sub" id="rsub">Rádios portuguesas em direto</p>' +
+  var cc = sget("radioCC", "PT");
+  view.innerHTML = '<div class="page"><div class="chips"><button class="chip nav' + (cc === "PT" ? " on" : "") + '" id="rPT">Portugal</button><button class="chip nav' + (cc === "GB" ? " on" : "") + '" id="rGB">UK</button></div><p class="sub" id="rsub">Rádios em direto</p>' +
     '<input class="sinput" id="rq" type="search" style="display:none" placeholder="Procurar rádio (ex.: Antena 1, Comercial, M80)…" autocomplete="off">' +
     '<div class="grid sqs" id="rgrid"></div><div class="empty" id="rempty"><div class="spin"></div>A carregar rádios…</div></div>' + foot();
   var all = [];
@@ -610,9 +615,11 @@ function radioPage(){
     $("rgrid").innerHTML = l.map(function(it, i){ return card(it, id, i); }).join("");
     $("rempty").style.display = l.length ? "none" : "block"; $("rempty").textContent = "Nenhuma rádio encontrada.";
   }
-  radios().then(function(l){
+  $("rPT").onclick = function(){ sset("radioCC", "PT"); radioPage(); $("rPT").focus(); };
+  $("rGB").onclick = function(){ sset("radioCC", "GB"); radioPage(); $("rGB").focus(); };
+  radios(false, cc).then(function(l){
     if(tok !== viewTok) return;
-    all = l; $("rsub").textContent = "Rádios portuguesas em direto · " + l.filter(showable).length + " rádios";
+    all = l; $("rsub").textContent = (cc === "GB" ? "Rádios do UK" : "Rádios portuguesas") + " em direto · " + l.filter(showable).length + " rádios";
     var t; $("rq").oninput = function(){ clearTimeout(t); t = setTimeout(draw, 150); };
     draw();
   }).catch(function(){ if(tok === viewTok) $("rempty").textContent = "Não consegui carregar as rádios. Verifica a internet."; });
@@ -637,7 +644,7 @@ function langSet(langs){
 
 function dailyRefresh(){
   Object.keys(KIDS_LISTS || {}).forEach(function(k){ loadList(k, KIDS_LISTS[k]).catch(function(){}); });
-  radios().catch(function(){});
+  radios().catch(function(){}); radios(false, "GB").catch(function(){});
   Object.keys(SRC).forEach(function(k){ loadList(k, SRC[k].url).catch(function(){}); });
   var my = sget("myurl", ""); if(my) loadList("my", my).catch(function(){});
   iaSearch("", 1).catch(function(){});
