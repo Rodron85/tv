@@ -420,7 +420,7 @@ var ON_TV_APP = /ForretaTV-Android/.test(navigator.userAgent);
 var LOCAL_BRIDGE = "https://ftv.local";              // built into the Android TV app: uses the TV's own internet (and its VPN)
 function streamBase(){ return ON_TV_APP ? LOCAL_BRIDGE : proxyBase(); }
 var via = sget("via", {});                          // url -> "d" (direct) or "p" (through the bridge)
-function viaOf(it){ return via[it.url] || ((HTTPS && /^http:\/\//i.test(it.url)) ? "p" : "d"); }
+function viaOf(it){ return via[it.url] || (((HTTPS && /^http:\/\//i.test(it.url)) || (ON_TV_APP && it.ref)) ? "p" : "d"); }   // the app's own bridge can send the Referer
 function setVia(it, m){ via[it.url] = m; sset("via", via); }
 function src(it, mode){
   if(it.type !== "live" && it.type !== "radio") return it.url;
@@ -489,9 +489,14 @@ function parseM3U(text){
       continue;
     }
     else if(cur){
+      // BBC: the DASH (.mpd) links have an HLS twin that the player can use
+      var bb = l.match(/^https:\/\/vs-(?:cmaf|dash)-(push[a-z]?-(?:uk|ww)-live)\.akamaized\.net\/(x=4\/i=urn:bbc:pips:service:[a-z0-9_]+\/[a-z0-9_]+)\.mpd/i);
+      if(bb) l = "https://vs-hls-" + bb[1] + ".akamaized.net/" + bb[2] + ".m3u8";
+      if(/bbc:pips|bbci\.co\.uk/i.test(l) && !cur.ref) cur.ref = "https://www.bbc.co.uk/";
       cur.url = l;
       if(!cur.name) cur.name = l.split("/").pop();
       var k = chanKey(cur.name);
+      if(/\.mpd(\?|$)/i.test(l)){ cur = null; continue; }     // DASH: the player cannot open it
       if(/^https?:\/\//i.test(l) && !seen[k]){ seen[k] = 1; cur.type = "live"; out.push(cur); }
       cur = null;
     }
@@ -502,7 +507,7 @@ function parseM3U(text){
 /* ================= data loading (auto-updates daily) ================= */
 function loadList(key, url, force){
   if(!force && mem[key] && mem[key].url === url && now() - mem[key].t < DAY) return Promise.resolve(mem[key]);
-  var cached = sget("l8:"+key, null);
+  var cached = sget("l9:"+key, null);
   if(!force && cached && cached.url === url && now() - cached.t < DAY){ mem[key] = cached; return Promise.resolve(cached); }
   var parts = url.split(/\|(?=https?:\/\/)/);
   return Promise.all(parts.map(function(u){
@@ -531,7 +536,7 @@ function loadList(key, url, force){
       });
     }).then(function(items){
       var d = {t:now(), url:url, items:items};
-      mem[key] = d; sset("l8:"+key, d); return d;
+      mem[key] = d; sset("l9:"+key, d); return d;
     }).catch(function(e){ if(cached){ cached.stale = true; mem[key] = cached; return cached; } throw e; });
 }
 function live(key){ return loadList(key, SRC[key].url).then(function(d){ return d.items.filter(showable); }); }
@@ -1195,7 +1200,7 @@ function m3uPage(){
     f.text().then(function(txt){ var d = {t:now(), items:parseM3U(txt)}; mem.myfile = d; sset("list:myfile", d); sset("myurl", ""); $("myUrl").value = ""; showMy(d); });
   };
   $("myFileLbl").onkeydown = function(e){ if(e.key === "Enter") $("myFile").click(); };
-  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l8:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
+  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l9:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
 }
 
 function opcoesPage(){
