@@ -228,6 +228,12 @@ footer{color:#6f7782;font-size:12px;text-align:center;padding:10px 20px 40px;lin
 #player.yt #ytf{display:block}
 #player.yt video,#player.yt .pb,#player.yt .subs{display:none}
 #player.yt .pt{background:#000}
+#player.yt.yfs #ytf{top:0;height:100%}
+#player.yt.yfs .pt,#player.yt.yfs .pc,#player.yt.yfs .pbtns{display:none!important}
+#player.yt #ytf{transform-origin:50% 50%;transition:transform .25s}
+#player.yt.yz1 #ytf{transform:scale(1.15)}
+#player.yt.yz2 #ytf{transform:scale(1.33)}
+#player.yt{overflow:hidden}
 .subs{position:absolute;left:5%;right:5%;bottom:140px;text-align:center;z-index:1;pointer-events:none}
 .subs span{background:#000c;color:#fff;padding:3px 10px;border-radius:6px;font-size:clamp(17px,2.6vw,30px);line-height:1.55;font-weight:600;-webkit-box-decoration-break:clone;box-decoration-break:clone}
 #player.idle .subs{bottom:60px}
@@ -1571,8 +1577,10 @@ function play(list, i){
   if(current.type === "yt"){
     msg("");
     var cc = subPref === "off" ? "" : "&cc_load_policy=1&cc_lang_pref=" + (subPref === "auto" ? "pt" : "en");
-    $("ytf").src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(current.id) + "?autoplay=1&rel=0&modestbranding=1&playsinline=1&hl=pt" + cc;
+    $("ytf").src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(current.id) + "?autoplay=1&rel=0&modestbranding=1&playsinline=1&hl=pt&enablejsapi=1&origin=" + encodeURIComponent(location.origin) + cc;
+    yt.t = 0; yt.state = -1;
     $("bBack").focus({preventScroll:true});
+    if(!matchMedia("(pointer:coarse)").matches) setTimeout(function(){ if(current && current.type === "yt") ytFs(true); }, 400);   // TV: straight to full screen
     return;
   }
   if(current.type === "ia") iaVideoUrl(current.id).then(function(u){ if(tok === playTok){ start(u.url, tok); addFileSubs(u.subs, tok); } }).catch(function(){ if(tok === playTok) failed(tok); });
@@ -1630,7 +1638,7 @@ function step(d){
   msg("Não há mais nada a dar nesta fila.");
 }
 function closePlayer(silent){
-  playTok++; stopMedia(); msg("");
+  playTok++; stopMedia(); msg(""); player.classList.remove("yfs", "yz1", "yz2");
   player.classList.remove("open"); document.body.classList.remove("locked");
   try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
   if(!silent){
@@ -1655,7 +1663,41 @@ if(window.WebKitPlaybackTargetAvailabilityEvent){
   });
   $("bAir").onclick = function(){ try{ video.webkitShowPlaybackTargetPicker(); }catch(e){} };
 }
+/* YouTube full screen + remote: OK pause/play, ◀ ▶ 10 s, ▲ ▼ zoom, Back leaves full screen */
+var yt = {t:0, state:-1, zoom:0};
+function ytCmd(f, args){ try{ $("ytf").contentWindow.postMessage(JSON.stringify({event:"command", func:f, args:args || []}), "*"); }catch(e){} }
+window.addEventListener("message", function(e){
+  if(!/youtube/.test(e.origin || "")) return;
+  try{ var d = JSON.parse(e.data); if(d.info){ if(d.info.currentTime != null) yt.t = d.info.currentTime; if(d.info.playerState != null) yt.state = d.info.playerState; } }catch(x){}
+});
+$("ytf").addEventListener("load", function(){ try{ $("ytf").contentWindow.postMessage(JSON.stringify({event:"listening", id:1}), "*"); }catch(e){} });
+function ytFs(on){
+  player.classList.toggle("yfs", on);
+  if(on){
+    try{ if(!ON_TV_APP && player.requestFullscreen && !document.fullscreenElement) player.requestFullscreen().catch(function(){}); }catch(e){}
+    try{ document.activeElement && document.activeElement.blur(); }catch(e){}
+    toast("OK pausa · ◀ ▶ 10 s · ▲ ▼ zoom · Voltar sai");
+  } else {
+    player.classList.remove("yz1", "yz2"); yt.zoom = 0;
+    try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+    $("bFull").focus({preventScroll:true});
+  }
+}
+function ytKey(k){
+  if(k === "Enter" || k === " " || k === "MediaPlayPause"){ ytCmd(yt.state === 1 ? "pauseVideo" : "playVideo"); toast(yt.state === 1 ? "Pausa" : "▶"); return true; }
+  if(k === "MediaPlay"){ ytCmd("playVideo"); return true; }
+  if(k === "MediaPause"){ ytCmd("pauseVideo"); return true; }
+  if(k === "ArrowRight" || k === "MediaFastForward"){ yt.t += 10; ytCmd("seekTo", [yt.t, true]); toast("+10 s"); return true; }
+  if(k === "ArrowLeft" || k === "MediaRewind"){ yt.t = Math.max(0, yt.t - 10); ytCmd("seekTo", [yt.t, true]); toast("−10 s"); return true; }
+  if(k === "ArrowUp" || k === "ArrowDown"){
+    yt.zoom = Math.max(0, Math.min(2, yt.zoom + (k === "ArrowUp" ? 1 : -1)));
+    player.classList.toggle("yz1", yt.zoom === 1); player.classList.toggle("yz2", yt.zoom === 2);
+    toast(["Imagem normal", "Zoom", "Zoom máximo"][yt.zoom]); return true;
+  }
+  return false;
+}
 $("bFull").onclick = function(){
+  if(current && current.type === "yt"){ ytFs(!player.classList.contains("yfs")); return; }
   try{
     if(document.fullscreenElement) document.exitFullscreen();
     else if(player.requestFullscreen) player.requestFullscreen().catch(function(){});
@@ -1697,6 +1739,10 @@ document.addEventListener("keydown", function(e){
   var k = e.key, a = document.activeElement, typing = a && a.tagName === "INPUT" && a.type !== "file";
   var open = player.classList.contains("open");
   if(open) wake();
+  if(open && player.classList.contains("yfs")){
+    if(k === "Escape" || k === "BrowserBack" || k === "GoBack" || k === "Backspace"){ e.preventDefault(); ytFs(false); return; }
+    if(ytKey(k)){ e.preventDefault(); return; }
+  }
   if(k === "Escape" || k === "BrowserBack" || k === "GoBack" || (k === "Backspace" && !typing)){
     e.preventDefault();
     if(open) closePlayer(); else if(typing) a.blur(); else if(page !== "home") go("home");
@@ -1719,6 +1765,7 @@ document.addEventListener("keydown", function(e){
 })();
 // Android TV app "back" button: one step back inside the app; false = leave the app
 window.ftvBack = function(){
+  if(player.classList.contains("yfs")){ ytFs(false); return true; }
   if(player.classList.contains("open")){ closePlayer(); return true; }
   if($("profiles").classList.contains("show")) return false;
   if(page !== "home" && page !== "khome"){ go(profile === "kids" ? "khome" : "home"); return true; }
