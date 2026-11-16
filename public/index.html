@@ -500,6 +500,7 @@ function parseM3U(text){
       if(!cur.name) cur.name = l.split("/").pop();
       var k = chanKey(cur.name);
       if(/\.mpd(\?|$)/i.test(l)){ cur = null; continue; }     // DASH: the player cannot open it
+      if(/^https?:\/\/45\.14\.84\.37\//.test(l)){ cur = null; continue; }   // dead ITV relay (502 from the UK too)
       if(/^https?:\/\//i.test(l) && !seen[k]){ seen[k] = 1; cur.type = "live"; out.push(cur); }
       cur = null;
     }
@@ -510,7 +511,7 @@ function parseM3U(text){
 /* ================= data loading (auto-updates daily) ================= */
 function loadList(key, url, force){
   if(!force && mem[key] && mem[key].url === url && now() - mem[key].t < DAY) return Promise.resolve(mem[key]);
-  var cached = sget("l11:"+key, null);
+  var cached = sget("l12:"+key, null);
   if(!force && cached && cached.url === url && now() - cached.t < DAY){ mem[key] = cached; return Promise.resolve(cached); }
   var parts = url.split(/\|(?=https?:\/\/)/);
   return Promise.all(parts.map(function(u){
@@ -540,7 +541,7 @@ function loadList(key, url, force){
       });
     }).then(function(items){
       var d = {t:now(), url:url, items:items};
-      mem[key] = d; sset("l11:"+key, d); return d;
+      mem[key] = d; sset("l12:"+key, d); return d;
     }).catch(function(e){ if(cached){ cached.stale = true; mem[key] = cached; return cached; } throw e; });
 }
 function live(key){ return loadList(key, SRC[key].url).then(function(d){ return d.items.filter(showable); }); }
@@ -1210,7 +1211,7 @@ function m3uPage(){
     f.text().then(function(txt){ var d = {t:now(), items:parseM3U(txt)}; mem.myfile = d; sset("list:myfile", d); sset("myurl", ""); $("myUrl").value = ""; showMy(d); });
   };
   $("myFileLbl").onkeydown = function(e){ if(e.key === "Enter") $("myFile").click(); };
-  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l11:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
+  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l12:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
 }
 
 function opcoesPage(){
