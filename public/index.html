@@ -420,7 +420,7 @@ var ON_TV_APP = /ForretaTV-Android/.test(navigator.userAgent);
 var LOCAL_BRIDGE = "https://ftv.local";              // built into the Android TV app: uses the TV's own internet (and its VPN)
 function streamBase(){ return ON_TV_APP ? LOCAL_BRIDGE : proxyBase(); }
 var via = sget("via", {});                          // url -> "d" (direct) or "p" (through the bridge)
-function viaOf(it){ return via[it.url] || (((HTTPS && /^http:\/\//i.test(it.url)) || (ON_TV_APP && it.ref)) ? "p" : "d"); }   // the app's own bridge can send the Referer
+function viaOf(it){ return via[it.url] || ((HTTPS && /^http:\/\//i.test(it.url)) ? "p" : "d"); }
 function setVia(it, m){ via[it.url] = m; sset("via", via); }
 function src(it, mode){
   if(it.type !== "live" && it.type !== "radio") return it.url;
@@ -492,7 +492,6 @@ function parseM3U(text){
       // BBC: the DASH (.mpd) links have an HLS twin that the player can use
       var bb = l.match(/^https:\/\/vs-(?:cmaf|dash)-(push[a-z]?-(?:uk|ww)-live)\.akamaized\.net\/(x=4\/i=urn:bbc:pips:service:[a-z0-9_]+\/[a-z0-9_]+)\.mpd/i);
       if(bb) l = "https://vs-hls-" + bb[1] + ".akamaized.net/" + bb[2] + ".m3u8";
-      if(/bbc:pips|bbci\.co\.uk/i.test(l) && !cur.ref) cur.ref = "https://www.bbc.co.uk/";
       cur.url = l;
       if(!cur.name) cur.name = l.split("/").pop();
       var k = chanKey(cur.name);
@@ -1653,7 +1652,7 @@ window.ftvBack = function(){
   if(page !== "home" && page !== "khome"){ go(profile === "kids" ? "khome" : "home"); return true; }
   return false;
 };
-var MODE_ID = ON_TV_APP ? "tv-local-2" : "web-direct-2";
+var MODE_ID = ON_TV_APP ? "tv-local-3" : "web-direct-3";
 if(sget("modeId", "") !== MODE_ID){ dead = {}; okc = {}; via = {}; sset("dead2", dead); sset("ok", okc); sset("via", via); sset("modeId", MODE_ID); }
 /* Network country changed (VPN on/off, another country)? Channels that failed before may work now: check them again. */
 (function(){
