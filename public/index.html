@@ -420,8 +420,10 @@ var ON_TV_APP = /ForretaTV-Android/.test(navigator.userAgent);
 var LOCAL_BRIDGE = "https://ftv.local";              // built into the Android TV app: uses the TV's own internet (and its VPN)
 function streamBase(){ return ON_TV_APP ? LOCAL_BRIDGE : proxyBase(); }
 var via = sget("via", {});                          // url -> "d" (direct) or "p" (through the bridge)
-function isBBC(it){ return /akamaized\.net\/x=4\/i=urn:bbc|bbci\.co\.uk/i.test(it.url || ""); }   // BBC: only opens straight from a home UK connection
-function viaOf(it){ if(isBBC(it)) return "d"; return via[it.url] || ((HTTPS && /^http:\/\//i.test(it.url)) ? "p" : "d"); }
+// Geo-locked channels (BBC, ITV, Channel 4, 5…): must come from your own connection, never the Cloudflare bridge.
+// In the TV/phone app the bridge runs on the device itself, so it is fine there.
+function isBBC(it){ return !!it.geo || /akamaized\.net\/x=4\/i=urn:bbc|bbci\.co\.uk/i.test(it.url || ""); }
+function viaOf(it){ if(isBBC(it)) return (HTTPS && ON_TV_APP && /^http:\/\//i.test(it.url)) ? "p" : "d"; return via[it.url] || ((HTTPS && /^http:\/\//i.test(it.url)) ? "p" : "d"); }
 function setVia(it, m){ if(isBBC(it)) return; via[it.url] = m; sset("via", via); }
 function src(it, mode){
   if(it.type !== "live" && it.type !== "radio") return it.url;
@@ -480,6 +482,7 @@ function parseM3U(text){
       var attr = function(n){ var m = l.match(new RegExp(n + '="([^"]*)"', "i")); return m ? m[1] : ""; };
       var st = l.replace(/\s[\w-]+="[^"]*"/g, ""), c = st.indexOf(",");
       cur = {logo:attr("tvg-logo"), group:attr("group-title"), tid:attr("tvg-id"), name:cleanName(c >= 0 ? st.slice(c + 1) : "") || attr("tvg-name")};
+      if(/\u24BC|geo-?blocked/i.test(l)) cur.geo = 1;          // only works from a home connection in that country
     } else if(l.charAt(0) === "#"){
       if(cur){
         var unq = function(v){ return v.trim().replace(/^["']|["']$/g, ""); };
@@ -507,7 +510,7 @@ function parseM3U(text){
 /* ================= data loading (auto-updates daily) ================= */
 function loadList(key, url, force){
   if(!force && mem[key] && mem[key].url === url && now() - mem[key].t < DAY) return Promise.resolve(mem[key]);
-  var cached = sget("l10:"+key, null);
+  var cached = sget("l11:"+key, null);
   if(!force && cached && cached.url === url && now() - cached.t < DAY){ mem[key] = cached; return Promise.resolve(cached); }
   var parts = url.split(/\|(?=https?:\/\/)/);
   return Promise.all(parts.map(function(u){
@@ -537,7 +540,7 @@ function loadList(key, url, force){
       });
     }).then(function(items){
       var d = {t:now(), url:url, items:items};
-      mem[key] = d; sset("l10:"+key, d); return d;
+      mem[key] = d; sset("l11:"+key, d); return d;
     }).catch(function(e){ if(cached){ cached.stale = true; mem[key] = cached; return cached; } throw e; });
 }
 function live(key){ return loadList(key, SRC[key].url).then(function(d){ return d.items.filter(showable); }); }
@@ -663,7 +666,7 @@ function probeNext(){
   var it = probeQ.shift(); if(!it) return;
   probeBusy++;
   var ctl = new AbortController(), to = setTimeout(function(){ ctl.abort(); }, PROBE_TIMEOUT);
-  var modes = viaOf(it) === "p" ? ["p"] : (streamBase() && !isBBC(it) ? ["d", "p"] : ["d"]);
+  var modes = viaOf(it) === "p" ? ["p"] : (streamBase() && (!isBBC(it) || ON_TV_APP) ? ["d", "p"] : ["d"]);
   function attempt(i){
     if(i >= modes.length) return Promise.reject(0);
     return fetch(src(it, modes[i]), {signal:ctl.signal, cache:"no-store"}).then(function(r){
@@ -672,7 +675,7 @@ function probeNext(){
       if(modes[i] === "p") setVia(it, "p");
     }).catch(function(){ return attempt(i + 1); });
   }
-  attempt(0).then(function(){ markOk(it.url); }, function(){ if(/\bbbc\b/i.test(it.name)) return; markDead(it.url); hideEverywhere(it.url); })   // BBC: only hide after a real try
+  attempt(0).then(function(){ markOk(it.url); }, function(){ if(isBBC(it)) return; markDead(it.url); hideEverywhere(it.url); })   // BBC: only hide after a real try
   .then(function(){ clearTimeout(to); probeBusy--; delete probing[it.url]; probeNext(); });
 }
 function hideEverywhere(url){
@@ -1207,7 +1210,7 @@ function m3uPage(){
     f.text().then(function(txt){ var d = {t:now(), items:parseM3U(txt)}; mem.myfile = d; sset("list:myfile", d); sset("myurl", ""); $("myUrl").value = ""; showMy(d); });
   };
   $("myFileLbl").onkeydown = function(e){ if(e.key === "Enter") $("myFile").click(); };
-  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l10:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
+  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l11:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
 }
 
 function opcoesPage(){
@@ -1515,7 +1518,7 @@ function play(list, i){
 function startLive(tok){
   var mode = viaOf(current);
   start(src(current, mode), tok, function(){
-    if(mode === "d" && streamBase() && !isBBC(current)){                // direct did not work: try through the bridge
+    if(mode === "d" && streamBase() && (!isBBC(current) || ON_TV_APP)){                // direct did not work: try through the bridge
       mode = "p"; setVia(current, "p"); stopMedia();
       msg('<div><div class="spin"></div>A tentar pela ponte…</div>');
       start(src(current, "p"), tok);
