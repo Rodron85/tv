@@ -617,13 +617,17 @@ function liveRadios(){ return radios().then(function(l){ return l.filter(showabl
 function radioPage(){
   var tok = viewTok;
   var cc = sget("radioCC", "PT");
-  view.innerHTML = '<div class="page"><div class="chips"><button class="chip nav' + (cc === "PT" ? " on" : "") + '" id="rPT">Portugal</button><button class="chip nav' + (cc === "GB" ? " on" : "") + '" id="rGB">UK</button></div><p class="sub" id="rsub">Rádios em direto</p>' +
+  var fr = favs.filter(function(f){ return f.type === "radio" && showable(f); }), frId = register(fr);
+  view.innerHTML = '<div class="page">' +
+    (fr.length ? '<h3 class="kh">★ As minhas rádios</h3><div class="grid sqs">' + fr.map(function(it, i){ return card(it, frId, i); }).join("") + '</div><h3 class="kh">Todas as rádios</h3>' : "") +
+    '<div class="chips"><button class="chip nav' + (cc === "PT" ? " on" : "") + '" id="rPT">Portugal</button><button class="chip nav' + (cc === "GB" ? " on" : "") + '" id="rGB">UK</button></div><p class="sub" id="rsub">Rádios em direto</p>' +
     '<input class="sinput" id="rq" type="search" style="display:none" placeholder="Procurar rádio (ex.: Antena 1, Comercial, M80)…" autocomplete="off">' +
     '<div class="grid sqs" id="rgrid"></div><div class="empty" id="rempty"><div class="spin"></div>A carregar rádios…</div></div>' + foot();
   var all = [];
   function draw(){
     var q = $("rq").value.trim().toLowerCase();
     var l = all.filter(function(it){ return showable(it) && (!q || it.name.toLowerCase().indexOf(q) >= 0 || it.group.toLowerCase().indexOf(q) >= 0); });
+    l.sort(function(a, b){ return isFav(b) - isFav(a); });          // favourites first
     var id = register(l);
     $("rgrid").innerHTML = l.map(function(it, i){ return card(it, id, i); }).join("");
     $("rempty").style.display = l.length ? "none" : "block"; $("rempty").textContent = "Nenhuma rádio encontrada.";
