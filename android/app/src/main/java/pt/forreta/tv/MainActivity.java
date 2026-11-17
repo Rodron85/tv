@@ -143,7 +143,7 @@ public class MainActivity extends Activity {
     private void checkForUpdate() {
         final SharedPreferences prefs = getSharedPreferences("ftv", MODE_PRIVATE);
         long last = prefs.getLong("lastUpdateCheck", 0);
-        if (System.currentTimeMillis() - last < 3 * 3600 * 1000L) return;     // at most every 3 hours
+        if (System.currentTimeMillis() - last < 10 * 60 * 1000L) return;     // at most every 10 minutes
         new Thread(() -> {
             try {
                 HttpURLConnection c = (HttpURLConnection) new URL(RELEASES).openConnection();
@@ -451,7 +451,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onPause() { super.onPause(); if (!radioOn) web.onPause(); }
-    @Override protected void onResume() { super.onResume(); web.onResume(); hideSystemBars(); }
+    @Override protected void onResume() { super.onResume(); web.onResume(); hideSystemBars(); checkForUpdate(); }
     @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
     @Override protected void onDestroy() { try { stopService(new Intent(this, RadioService.class)); } catch (Exception e) {} if (web != null) web.destroy(); super.onDestroy(); }
 }
