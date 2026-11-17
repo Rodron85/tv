@@ -75,6 +75,7 @@ public class MainActivity extends Activity {
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         s.setUserAgentString(s.getUserAgentString() + " ForretaTV-Android");
         web.addJavascriptInterface(new NativeBridge(), "FTV");
+        self = this;
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
 
@@ -404,23 +405,49 @@ public class MainActivity extends Activity {
         });
     }
 
-    private volatile boolean radioOn = false;
+    private volatile boolean radioOn = false;     // something is playing: keep going with the screen off
+    private volatile boolean videoOn = false;     // a picture is playing: shrink to a small window when leaving the app
+    private static MainActivity self;
 
-    /** Called from the page: a radio started or stopped, so keep playing with the screen off. */
+    /** Lock-screen / notification / car buttons → the page. */
+    static void media(final String cmd) {
+        final MainActivity a = self; if (a == null || a.web == null) return;
+        a.runOnUiThread(new Runnable() { public void run() {
+            a.web.evaluateJavascript("window.ftvMedia&&window.ftvMedia('" + cmd.replaceAll("[^a-z]", "") + "')", null);
+        }});
+    }
+
+    /** Called from the page when playback starts, pauses or stops. */
     class NativeBridge {
-        @JavascriptInterface public void playing(final boolean on, final String title) {
+        @JavascriptInterface public void playing(final boolean on, final String title) { media2(on ? "play" : "stop", title, false); }
+        @JavascriptInterface public void state(final String st, final String title, final boolean video) { media2(st, title, video); }
+        private void media2(final String st, final String title, final boolean video) {
             runOnUiThread(new Runnable() { public void run() {
-                radioOn = on;
-                Intent i = new Intent(MainActivity.this, RadioService.class).putExtra("title", title);
+                boolean stop = "stop".equals(st);
+                radioOn = !stop; videoOn = !stop && video && "play".equals(st);
+                Intent i = new Intent(MainActivity.this, RadioService.class).setAction("show")
+                        .putExtra("title", title).putExtra("playing", "play".equals(st));
                 try {
-                    if (on) {
+                    if (!stop) {
                         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != 0)
                             requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 7);
                         if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i);
-                    } else stopService(i);
+                    } else stopService(new Intent(MainActivity.this, RadioService.class));
                 } catch (Exception e) {}
             }});
         }
+    }
+
+    /** Leaving the app while a video plays (phones): keep it in a small floating window. */
+    @Override protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (videoOn && Build.VERSION.SDK_INT >= 26 && !getPackageManager().hasSystemFeature("android.software.leanback")) {
+            try { enterPictureInPictureMode(new android.app.PictureInPictureParams.Builder().setAspectRatio(new android.util.Rational(16, 9)).build()); } catch (Exception e) {}
+        }
+    }
+    @Override public void onPictureInPictureModeChanged(boolean pip, android.content.res.Configuration c) {
+        super.onPictureInPictureModeChanged(pip, c);
+        if (web != null) web.evaluateJavascript("window.ftvPip&&window.ftvPip(" + pip + ")", null);
     }
 
     @Override protected void onPause() { super.onPause(); if (!radioOn) web.onPause(); }

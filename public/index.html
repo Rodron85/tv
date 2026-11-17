@@ -229,6 +229,8 @@ footer{color:#6f7782;font-size:12px;text-align:center;padding:10px 20px 40px;lin
 #player.yt video,#player.yt .pb,#player.yt .subs{display:none}
 #player.yt .pt{background:#000}
 #player.yt.yfs #ytf{top:0;height:100%}
+body.pip #player .pt,body.pip #player .pb,body.pip #ptoast,body.pip #pmsg{display:none!important}
+body.pip #player.yt #ytf{top:0;height:100%}
 #player.yt.yfs .pt,#player.yt.yfs .pc,#player.yt.yfs .pbtns{display:none!important}
 #player.yt #ytf{transform-origin:50% 50%;transition:transform .25s}
 #player.yt.yz1 #ytf{transform:scale(1.15)}
@@ -1445,9 +1447,26 @@ function search(){
 var player = $("player"), video = $("video"), pmsg = $("pmsg"), bFav = $("bFav");
 var hls = null, queue = [], qi = -1, playTok = 0, playTimer = null, current = null, lastFocus = null, idleT = null;
 
-function nativeRadio(on){ try{ if(window.FTV && FTV.playing) FTV.playing(!!on, on && current ? current.name : ""); }catch(e){} }
-video.addEventListener("playing", function(){ if(current && current.type === "radio") nativeRadio(true); });
-video.addEventListener("pause", function(){ if(current && current.type === "radio" && !document.hidden) nativeRadio(false); });
+/* Android app: lock-screen controls, playing with the screen off, small window (PiP) */
+function nativeState(st){
+  try{
+    if(!window.FTV) return;
+    if(FTV.state) FTV.state(st, current ? current.name : "", !!(current && current.type !== "radio"));
+    else if(FTV.playing) FTV.playing(st !== "stop" && !!current && current.type === "radio", current ? current.name : "");
+  }catch(e){}
+}
+function nativeRadio(on){ if(!on) nativeState("stop"); }
+video.addEventListener("playing", function(){ if(current) nativeState("play"); });
+video.addEventListener("pause", function(){ if(current && video.getAttribute("src") !== null) nativeState("pause"); });
+window.ftvMedia = function(cmd){
+  if(!current || !player.classList.contains("open")) return;
+  if(cmd === "next"){ step(1); return; }
+  if(cmd === "prev"){ step(-1); return; }
+  var playNow = cmd === "play" || (cmd === "toggle" && (current.type === "yt" ? yt.state !== 1 : video.paused));
+  if(current.type === "yt"){ ytCmd(playNow ? "playVideo" : "pauseVideo"); nativeState(playNow ? "play" : "pause"); }
+  else if(playNow) video.play().catch(function(){}); else video.pause();
+};
+window.ftvPip = function(on){ document.body.classList.toggle("pip", !!on); video.controls = !on; if(on) player.classList.add("idle"); };
 function stopMedia(){
   clearTimeout(playTimer); nativeRadio(false);
   if(hls){ try{ hls.destroy(); }catch(e){} hls = null; }
@@ -1671,7 +1690,7 @@ var yt = {t:0, state:-1, zoom:0};
 function ytCmd(f, args){ try{ $("ytf").contentWindow.postMessage(JSON.stringify({event:"command", func:f, args:args || []}), "*"); }catch(e){} }
 window.addEventListener("message", function(e){
   if(!/youtube/.test(e.origin || "")) return;
-  try{ var d = JSON.parse(e.data); if(d.info){ if(d.info.currentTime != null) yt.t = d.info.currentTime; if(d.info.playerState != null) yt.state = d.info.playerState; } }catch(x){}
+  try{ var d = JSON.parse(e.data); if(d.info){ if(d.info.currentTime != null) yt.t = d.info.currentTime; if(d.info.playerState != null){ if(d.info.playerState !== yt.state){ if(d.info.playerState === 1) nativeState("play"); else if(d.info.playerState === 2) nativeState("pause"); } yt.state = d.info.playerState; } } }catch(x){}
 });
 $("ytf").addEventListener("load", function(){ try{ $("ytf").contentWindow.postMessage(JSON.stringify({event:"listening", id:1}), "*"); }catch(e){} });
 function ytLoad(start){
