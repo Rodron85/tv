@@ -1461,14 +1461,27 @@ function nativeState(st){
 }
 function nativeRadio(on){ if(!on) nativeState("stop"); }
 video.addEventListener("playing", function(){ if(current) nativeState("play"); });
-video.addEventListener("pause", function(){ if(current && video.getAttribute("src") !== null) nativeState("pause"); });
+var userPaused = false;
+video.addEventListener("pause", function(){
+  if(!current || video.getAttribute("src") === null) return;
+  // Android sometimes pauses by itself when the screen locks: a radio or live channel just carries on
+  if(!userPaused && document.hidden && (current.type === "radio" || current.type === "live") && player.classList.contains("open")){
+    setTimeout(function(){ if(!userPaused && video.paused && current) video.play().catch(function(){ play(queue, qi); }); }, 300);
+    return;
+  }
+  nativeState("pause");
+});
+video.addEventListener("play", function(){ userPaused = false; });
 window.ftvMedia = function(cmd){
   if(!current || !player.classList.contains("open")) return;
   if(cmd === "next"){ step(1); return; }
   if(cmd === "prev"){ step(-1); return; }
   var playNow = cmd === "play" || (cmd === "toggle" && (current.type === "yt" ? yt.state !== 1 : video.paused));
-  if(current.type === "yt"){ ytCmd(playNow ? "playVideo" : "pauseVideo"); nativeState(playNow ? "play" : "pause"); }
-  else if(playNow) video.play().catch(function(){}); else video.pause();
+  if(current.type === "yt"){ ytCmd(playNow ? "playVideo" : "pauseVideo"); nativeState(playNow ? "play" : "pause"); return; }
+  if(!playNow){ userPaused = true; video.pause(); nativeState("pause"); return; }
+  userPaused = false;
+  if(current.type === "radio" || current.type === "live"){ play(queue, qi); return; }   // live: reconnect fresh (after a long pause the old stream is gone)
+  video.play().catch(function(){ play(queue, qi); });
 };
 window.ftvPip = function(on){ document.body.classList.toggle("pip", !!on); video.controls = !on; if(on) player.classList.add("idle"); };
 function stopMedia(){
