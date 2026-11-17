@@ -502,6 +502,7 @@ function parseM3U(text){
       // BBC: the DASH (.mpd) links have an HLS twin that the player can use
       var bb = l.match(/^https:\/\/vs-(?:cmaf|dash)-(push[a-z]?-(?:uk|ww)-live)\.akamaized\.net\/(x=4\/i=urn:bbc:pips:service:[a-z0-9_]+\/[a-z0-9_]+)\.mpd/i);
       if(bb) l = "https://vs-hls-" + bb[1] + ".akamaized.net/" + bb[2] + ".m3u8";
+      if(/impresa\.pt|okast\.tv/i.test(l)) cur.geo = 1;       // SIC: only from Portugal (VPN) — never hide it for failing elsewhere
       cur.url = l;
       if(!cur.name) cur.name = l.split("/").pop();
       var k = chanKey(cur.name);
@@ -517,7 +518,7 @@ function parseM3U(text){
 /* ================= data loading (auto-updates daily) ================= */
 function loadList(key, url, force){
   if(!force && mem[key] && mem[key].url === url && now() - mem[key].t < DAY) return Promise.resolve(mem[key]);
-  var cached = sget("l12:"+key, null);
+  var cached = sget("l13:"+key, null);
   if(!force && cached && cached.url === url && now() - cached.t < DAY){ mem[key] = cached; return Promise.resolve(cached); }
   var parts = url.split(/\|(?=https?:\/\/)/);
   return Promise.all(parts.map(function(u){
@@ -547,7 +548,7 @@ function loadList(key, url, force){
       });
     }).then(function(items){
       var d = {t:now(), url:url, items:items};
-      mem[key] = d; sset("l12:"+key, d); return d;
+      mem[key] = d; sset("l13:"+key, d); return d;
     }).catch(function(e){ if(cached){ cached.stale = true; mem[key] = cached; return cached; } throw e; });
 }
 function live(key){ return loadList(key, SRC[key].url).then(function(d){ return d.items.filter(showable); }); }
@@ -1280,7 +1281,7 @@ function m3uPage(){
     f.text().then(function(txt){ var d = {t:now(), items:parseM3U(txt)}; mem.myfile = d; sset("list:myfile", d); sset("myurl", ""); $("myUrl").value = ""; showMy(d); });
   };
   $("myFileLbl").onkeydown = function(e){ if(e.key === "Enter") $("myFile").click(); };
-  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l12:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
+  $("myClear").onclick = function(){ sset("myurl", ""); sdel("l13:my"); sdel("list:myfile"); delete mem.my; delete mem.myfile; $("myUrl").value = ""; err("Lista removida."); };
 }
 
 function opcoesPage(){
@@ -1784,7 +1785,7 @@ window.ftvBack = function(){
   if(page !== "home" && page !== "khome"){ go(profile === "kids" ? "khome" : "home"); return true; }
   return false;
 };
-var MODE_ID = ON_TV_APP ? "tv-local-5" : "web-direct-5";
+var MODE_ID = ON_TV_APP ? "tv-local-6" : "web-direct-6";
 if(sget("modeId", "") !== MODE_ID){ dead = {}; okc = {}; via = {}; sset("dead2", dead); sset("ok", okc); sset("via", via); sset("modeId", MODE_ID); }
 /* Network country changed (VPN on/off, another country)? Channels that failed before may work now: check them again. */
 (function(){
