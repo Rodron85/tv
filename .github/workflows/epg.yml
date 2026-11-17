@@ -2,7 +2,7 @@ name: Guia TV (agora / a seguir)
 
 on:
   schedule:
-    - cron: '17 */3 * * *'
+    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:

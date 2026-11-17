@@ -8,7 +8,7 @@ BASE = "https://raw.githubusercontent.com/LITUATUI/M3UPT/main/EPG/"
 SOURCES = [("epg-m3upt.xml.xz", "pt"), ("epg-freeview-uk.xml.xz", "uk"),
            ("https://i.mjh.nz/PlutoTV/gb.xml.gz", "pl"), ("https://i.mjh.nz/PlutoTV/us.xml.gz", "pl")]
 KIDS = re.compile(r"(?i)kid|junior|toon|nick|cartoon|anima|baby|bean|peppa|teletubb|sponge|lego|garfield|smurf|sonic|oggy|tom and|transformers|turtles|rugrats|dora|avatar|arnold|pok[eé]mon|barney|thomas|caillou|power rangers|family|pocket\.watch|ryan|blippi|moonbug|baby shark|ninja")
-BEFORE, AFTER, MAXP = 3 * 3600, 7 * 3600, 30
+BEFORE, AFTER, MAXP = 3 * 3600, 26 * 3600, 120
 
 def key(n):
     n = unicodedata.normalize("NFD", (n or "").lower())
