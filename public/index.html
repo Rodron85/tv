@@ -1445,8 +1445,11 @@ function search(){
 var player = $("player"), video = $("video"), pmsg = $("pmsg"), bFav = $("bFav");
 var hls = null, queue = [], qi = -1, playTok = 0, playTimer = null, current = null, lastFocus = null, idleT = null;
 
+function nativeRadio(on){ try{ if(window.FTV && FTV.playing) FTV.playing(!!on, on && current ? current.name : ""); }catch(e){} }
+video.addEventListener("playing", function(){ if(current && current.type === "radio") nativeRadio(true); });
+video.addEventListener("pause", function(){ if(current && current.type === "radio" && !document.hidden) nativeRadio(false); });
 function stopMedia(){
-  clearTimeout(playTimer);
+  clearTimeout(playTimer); nativeRadio(false);
   if(hls){ try{ hls.destroy(); }catch(e){} hls = null; }
   video.onerror = null; video.oncanplay = null;
   video.pause(); video.removeAttribute("src");

@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -73,6 +74,7 @@ public class MainActivity extends Activity {
         s.setUseWideViewPort(true);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         s.setUserAgentString(s.getUserAgentString() + " ForretaTV-Android");
+        web.addJavascriptInterface(new NativeBridge(), "FTV");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
 
@@ -402,8 +404,27 @@ public class MainActivity extends Activity {
         });
     }
 
-    @Override protected void onPause() { super.onPause(); web.onPause(); }
+    private volatile boolean radioOn = false;
+
+    /** Called from the page: a radio started or stopped, so keep playing with the screen off. */
+    class NativeBridge {
+        @JavascriptInterface public void playing(final boolean on, final String title) {
+            runOnUiThread(new Runnable() { public void run() {
+                radioOn = on;
+                Intent i = new Intent(MainActivity.this, RadioService.class).putExtra("title", title);
+                try {
+                    if (on) {
+                        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != 0)
+                            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 7);
+                        if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i);
+                    } else stopService(i);
+                } catch (Exception e) {}
+            }});
+        }
+    }
+
+    @Override protected void onPause() { super.onPause(); if (!radioOn) web.onPause(); }
     @Override protected void onResume() { super.onResume(); web.onResume(); hideSystemBars(); }
     @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }
-    @Override protected void onDestroy() { if (web != null) web.destroy(); super.onDestroy(); }
+    @Override protected void onDestroy() { try { stopService(new Intent(this, RadioService.class)); } catch (Exception e) {} if (web != null) web.destroy(); super.onDestroy(); }
 }
