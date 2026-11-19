@@ -236,6 +236,9 @@ body.pip #player.yt #ytf{top:0;height:100%}
 #player.yt.yz1 #ytf{transform:scale(1.15)}
 #player.yt.yz2 #ytf{transform:scale(1.33)}
 #player.yt{overflow:hidden}
+#player.yt.yq.yfs #ytf{left:50%;top:50%;right:auto;bottom:auto;width:calc(100% * var(--yf,1));height:calc(100% * var(--yf,1));transform-origin:50% 50%;transform:translate(-50%,-50%) scale(calc(1 / var(--yf,1)))}
+#player.yt.yq.yfs.yz1 #ytf{transform:translate(-50%,-50%) scale(calc(1.15 / var(--yf,1)))}
+#player.yt.yq.yfs.yz2 #ytf{transform:translate(-50%,-50%) scale(calc(1.33 / var(--yf,1)))}
 .subs{position:absolute;left:5%;right:5%;bottom:140px;text-align:center;z-index:1;pointer-events:none}
 .subs span{background:#000c;color:#fff;padding:3px 10px;border-radius:6px;font-size:clamp(17px,2.6vw,30px);line-height:1.55;font-weight:600;-webkit-box-decoration-break:clone;box-decoration-break:clone}
 #player.idle .subs{bottom:60px}
@@ -1303,6 +1306,10 @@ function opcoesPage(){
     '<div class="box"><p>O que o botão CC faz quando abres um canal ou filme.</p><div class="r" id="subOpts">' +
       ["auto", "en", "off"].map(function(k){ return '<button class="chip nav' + (subPref === k ? " on" : "") + '" data-s="' + k + '">' + subLabel[k] + "</button>"; }).join("") +
     "</div></div>" +
+    '<h2 class="oh">Qualidade do YouTube</h2>' +
+    '<div class="box"><p>Máxima pede ao YouTube a melhor imagem que o vídeo tiver (até 2160p/4K). Se os vídeos ficarem a parar, escolhe Automática.</p><div class="r" id="ytqOpts">' +
+      [["max", "Máxima (4K)"], ["auto", "Automática"]].map(function(o){ return '<button class="chip nav' + (ytQ() === o[0] ? " on" : "") + '" data-q="' + o[0] + '">' + o[1] + "</button>"; }).join("") +
+    "</div></div>" +
     '<h2 class="oh">O teu nome</h2>' +
     '<div class="box"><p>Aparece no Início, em “Continuar a ver para…”.</p><div class="r">' +
       '<input class="nav" id="nmIn" type="url" inputmode="text" placeholder="Ex.: Ronnie" value="' + esc(sget("name", "")) + '" autocomplete="off">' +
@@ -1338,6 +1345,11 @@ function opcoesPage(){
   };
   $("pxDel").onclick = function(){ sset("proxy", "off"); $("pxUrl").value = ""; resetChecks(); pxStatus(); };
   pxStatus();
+  $("ytqOpts").onclick = function(e){
+    var b = e.target.closest("[data-q]"); if(!b) return;
+    sset("ytq", b.dataset.q);
+    [].forEach.call($("ytqOpts").children, function(x){ x.classList.toggle("on", x === b); });
+  };
   $("subOpts").onclick = function(e){
     var b = e.target.closest("[data-s]"); if(!b) return;
     subPref = b.dataset.s; sset("subs", subPref);
@@ -1711,7 +1723,12 @@ window.addEventListener("message", function(e){
   try{ var d = JSON.parse(e.data); if(d.info){ if(d.info.currentTime != null) yt.t = d.info.currentTime; if(d.info.playerState != null){ if(d.info.playerState !== yt.state){ if(d.info.playerState === 1) nativeState("play"); else if(d.info.playerState === 2) nativeState("pause"); } yt.state = d.info.playerState; } } }catch(x){}
 });
 $("ytf").addEventListener("load", function(){ try{ $("ytf").contentWindow.postMessage(JSON.stringify({event:"listening", id:1}), "*"); }catch(e){} });
+function ytQ(){ return sget("ytq", matchMedia("(pointer:coarse)").matches ? "auto" : "max"); }
 function ytLoad(start){
+  // "max": YouTube picks the stream by the player's size in real pixels, so draw it at 4K and show it scaled to the screen
+  var f = Math.max(1, Math.ceil(3840 / (Math.max(innerWidth, 1) * (window.devicePixelRatio || 1)) * 100) / 100);
+  player.style.setProperty("--yf", f);
+  player.classList.toggle("yq", ytQ() === "max" && f > 1);
   var cc = subPref === "off" ? "&cc_load_policy=0" : "&cc_load_policy=1&cc_lang_pref=" + (subPref === "auto" ? "pt" : "en") + "&hl=" + (subPref === "auto" ? "pt" : "en");
   $("ytf").src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(current.id) + "?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=" + encodeURIComponent(location.origin) + cc + (start ? "&start=" + start : "");
   $("bSub").textContent = {auto:"PT", en:"EN", off:"CC"}[subPref];
